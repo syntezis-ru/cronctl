@@ -1,10 +1,10 @@
-package ru.syntezis.cronctl;
+package ru.syntezis.sampleapp;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CronctlApplicationTests {
+class SampleApplicationTests {
 
     @Test
     void contextLoads() {

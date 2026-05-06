@@ -1,0 +1,6 @@
+cronctl:
+  security:
+    enabled: false
+  swagger:
+    enabled: true
+    public-access: true

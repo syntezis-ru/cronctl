@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: sample-app
+
+schedule:
+  cron:
+    job-a: 0 0/1 * * * *
