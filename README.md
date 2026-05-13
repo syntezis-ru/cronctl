@@ -1,5 +1,10 @@
 # cronctl-spring-boot-starter
 
+[![CI](https://github.com/YOUR_USERNAME/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot](https://img.shields.io/badge/spring--boot-4.0.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+
 A Spring Boot starter that exposes a REST API for viewing and manually triggering
 methods annotated with `@Scheduled`.
 
