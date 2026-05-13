@@ -1,0 +1,46 @@
+{
+  "properties": [
+    {
+      "name": "cronctl.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable cronctl.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "cronctl.api.default-path",
+      "type": "java.lang.String",
+      "description": "cronctl API path.",
+      "defaultValue": "/api/cronctl"
+    },
+    {
+      "name": "cronctl.security.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Use Spring-Security.",
+      "defaultValue": "false"
+    },
+    {
+      "name": "cronctl.swagger.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable swagger.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "cronctl.swagger.public-access",
+      "type": "java.lang.Boolean",
+      "description": "Enable unauthenticated access to swagger.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "cronctl.swagger.group",
+      "type": "java.lang.String",
+      "description": "Swagger group.",
+      "defaultValue": "cronctl"
+    },
+    {
+      "name": "cronctl.swagger.paths-to-match",
+      "type": "java.lang.String",
+      "description": "Swagger paths to match.",
+      "defaultValue": "/api/cronctl/**"
+    }
+  ]
+}

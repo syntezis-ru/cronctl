@@ -1,4 +1,4 @@
-package ru.syntezis.cronctl.util;
+package ru.syntezis.cronctl.util.generator;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

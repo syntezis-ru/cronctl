@@ -1,4 +1,4 @@
-package ru.syntezis.cronctl.util;
+package ru.syntezis.cronctl.util.condition;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

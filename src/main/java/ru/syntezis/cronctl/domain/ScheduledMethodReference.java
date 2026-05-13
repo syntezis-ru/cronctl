@@ -13,7 +13,8 @@ import java.lang.reflect.Method;
 @Builder
 public class ScheduledMethodReference {
 
-    private Method method;
+    private String beanName;
     private Object bean;
+    private Method method;
 
 }

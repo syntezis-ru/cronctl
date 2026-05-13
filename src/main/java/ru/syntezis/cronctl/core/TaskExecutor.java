@@ -1,10 +1,7 @@
 package ru.syntezis.cronctl.core;
 
 import lombok.extern.slf4j.Slf4j;
-import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
-import ru.syntezis.cronctl.domain.ScheduledMethodReference;
-import ru.syntezis.cronctl.domain.Task;
-import ru.syntezis.cronctl.domain.TaskExecutionDetails;
+import ru.syntezis.cronctl.domain.*;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -14,27 +11,34 @@ import java.util.UUID;
 public class TaskExecutor {
 
     public TaskExecutionDetails executeTask(Task task) {
-        UUID taskId = UUID.randomUUID();
+        ScheduledMethod scheduledMethod = task.getMethod();
+        ScheduledMethodDetails details = scheduledMethod.getDetails();
 
-        ScheduledMethodDetails details = task.getDetails();
-        UUID id = details.getId();
+        UUID methodId = details.getId();
         String methodName = details.getMethodName();
-        ScheduledMethodReference reference = task.getReference();
+
+        ScheduledMethodReference reference = scheduledMethod.getReference();
         Object bean = reference.getBean();
         Method method = reference.getMethod();
 
-        log.info("Executing task with id:{}. Scheduled method id:{}, method name:{}", taskId, id, methodName);
-        TaskExecutionDetails executionDetails = TaskExecutionDetails.prepare();
+        TaskExecutionDetails executionDetails = TaskExecutionDetails.prepare(methodId);
+        UUID executionId = executionDetails.getExecutionId();
+        log.info("Executing task id: {}. Scheduled method id: {}, name: {}", executionId, methodId, methodName);
+
         try {
-            method.setAccessible(true);
+            method.setAccessible(true); // NOSONAR
             executionDetails.execute();
             method.invoke(bean);
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            log.error("Task with id:{} failed with exception message:{}", taskId, e.getMessage(), e);
+            executionDetails.succeeded();
+            log.info("Task with id: {} executed successfully. Completed in {} mills", executionId, executionDetails.getExecutionDurationMills());
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            log.error("Task with id: {} failed with exception message: {}", executionId, cause.getMessage(), cause);
+            executionDetails.failed(cause, cause.getMessage());
+        } catch (IllegalAccessException e) {
+            log.error("Task with id: {} failed with exception message: {}", executionId, e.getMessage(), e);
             executionDetails.failed(e, e.getMessage());
         }
-
-        log.info("Task with id:{} executed successfully", taskId);
 
         return executionDetails;
     }

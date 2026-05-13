@@ -9,13 +9,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
+import ru.syntezis.cronctl.domain.ScheduledMethod;
 import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.Task;
+import ru.syntezis.cronctl.filter.ScheduledMethodsFilter;
+import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
 import ru.syntezis.cronctl.scan.TaskRegistry;
-import ru.syntezis.cronctl.util.BeanCreationRequest;
-import ru.syntezis.cronctl.util.BeanGenerator;
-import ru.syntezis.cronctl.util.Conditions;
-import ru.syntezis.cronctl.util.GeneratedBeanDetails;
+import ru.syntezis.cronctl.util.generator.BeanCreationRequest;
+import ru.syntezis.cronctl.util.generator.BeanGenerator;
+import ru.syntezis.cronctl.util.condition.Conditions;
+import ru.syntezis.cronctl.util.generator.GeneratedBeanDetails;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -29,17 +32,21 @@ class ScheduleAnnotationBeanPostProcessorTest {
     private static final BeanGenerator generator = new BeanGenerator();
 
     private TaskRegistry registry;
+    private ScheduledMethodsFilter filter;
+    private ScheduledBeanProcessor processor;
 
     private ScheduleAnnotationBeanPostProcessor underTest;
 
     @BeforeAll
     void init() {
         registry = new TaskRegistry();
-        underTest = new ScheduleAnnotationBeanPostProcessor(registry);
+        filter = new ScheduledMethodsFilter();
+        processor = new ScheduledBeanProcessor();
+        underTest = new ScheduleAnnotationBeanPostProcessor(registry, filter, processor);
     }
 
     @Test
-    void postProcessAfterInitialization_ClassContainsScheduledMethod_TaskIsRegistered() {
+    void postProcessAfterInitialization_ClassContainsScheduledMethod_TaskIsRegistered() throws NoSuchMethodException {
         // Given
         SampleScheduledClass bean = new SampleScheduledClass();
 
@@ -55,16 +62,18 @@ class ScheduleAnnotationBeanPostProcessorTest {
 
         assertThat(task)
                 .hasNoNullFieldsOrProperties()
-                .extracting(Task::getDetails)
-                .satisfies(new Conditions.UUIDCondition())
+                .extracting(Task::getMethod)
+                .extracting(ScheduledMethod::getDetails)
                 .hasFieldOrPropertyWithValue("methodName", "doSomething")
                 .extracting(ScheduledMethodDetails::getSchedule)
+                .hasNoNullFieldsOrProperties()
                 .hasFieldOrPropertyWithValue("fixedRate", 1000L);
 
         assertThat(task)
                 .hasNoNullFieldsOrProperties()
-                .extracting(Task::getReference)
-                .hasFieldOrPropertyWithValue("method", bean.getClass().getDeclaredMethods()[0])
+                .extracting(Task::getMethod)
+                .extracting(ScheduledMethod::getReference)
+                .hasFieldOrPropertyWithValue("method", bean.getClass().getDeclaredMethod("doSomething"))
                 .hasFieldOrPropertyWithValue("bean", bean);
     }
 
@@ -86,18 +95,20 @@ class ScheduleAnnotationBeanPostProcessorTest {
                 .hasSize(scheduledMethodsCount);
 
         assertThat(tasks)
-                .extracting(Task::getDetails)
+                .extracting(Task::getMethod)
+                .extracting(ScheduledMethod::getDetails)
                 .allSatisfy(d ->
                         assertThat(d)
                                 .hasNoNullFieldsOrProperties()
-                                .satisfies(new Conditions.UUIDCondition())
+                                .satisfies(new Conditions.ScheduledMethodDetailsUUIDCondition())
                                 .satisfies(new Conditions.RandomGeneratedStringCondition())
                                 .extracting(ScheduledMethodDetails::getSchedule)
                                 .satisfies(new Conditions.FixedRateCondition())
                 );
 
         assertThat(tasks)
-                .extracting(Task::getReference)
+                .extracting(Task::getMethod)
+                .extracting(ScheduledMethod::getReference)
                 .allSatisfy(r ->
                         assertThat(r)
                                 .hasNoNullFieldsOrProperties()

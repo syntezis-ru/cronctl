@@ -1,9 +1,8 @@
 package ru.syntezis.cronctl.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -11,7 +10,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class Task {
 
-    private ScheduledMethodDetails details;
-    private ScheduledMethodReference reference;
+    private ScheduledMethod method;
 
+    public UUID getId() {
+        return method.getId();
+    }
 }

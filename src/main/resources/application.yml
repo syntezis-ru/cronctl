@@ -1,4 +1,6 @@
 cronctl:
+  api:
+    default-path: /api/cronctl
   security:
     enabled: false
   swagger:

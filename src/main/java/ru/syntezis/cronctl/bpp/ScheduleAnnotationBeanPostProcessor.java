@@ -1,33 +1,37 @@
 package ru.syntezis.cronctl.bpp;
 
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.scheduling.annotation.Scheduled;
-import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
-import ru.syntezis.cronctl.domain.ScheduledMethodReference;
+import org.springframework.context.EmbeddedValueResolverAware;
+import org.springframework.util.StringValueResolver;
+import ru.syntezis.cronctl.domain.ScheduledMethod;
+import ru.syntezis.cronctl.filter.ScheduledMethodsFilter;
+import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
 import ru.syntezis.cronctl.scan.TaskRegistry;
-import ru.syntezis.cronctl.util.ScheduleUtils;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor
-public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor {
+public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, EmbeddedValueResolverAware {
 
     private final TaskRegistry registry;
+    private final ScheduledMethodsFilter filter;
+    private final ScheduledBeanProcessor processor;
+
+    @Setter(onMethod_ = @Override)
+    private StringValueResolver embeddedValueResolver;
 
     @Override
     public @Nullable Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         log.debug("Processing bean with name: {}", beanName);
-        List<Method> methods = Arrays.stream(bean.getClass().getMethods())
-                .filter(m -> m.isAnnotationPresent(Scheduled.class))
-                .toList();
+
+        List<Method> methods = filter.filter(List.of(bean.getClass().getDeclaredMethods()));
 
         if (methods.isEmpty()) {
             log.debug("No scheduled methods found for bean: {}", beanName);
@@ -35,19 +39,9 @@ public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor {
         }
 
         methods.forEach(m -> {
-            UUID id = UUID.randomUUID();
-            log.debug("Found scheduled method: {} in class: {}. Adding to registry with id:{}", m.getName(), bean.getClass(), id);
-            Scheduled annotation = m.getAnnotation(Scheduled.class);
-            registry.add(ScheduledMethodDetails.builder()
-                            .id(id)
-                            .schedule(ScheduleUtils.assembleScheduleDetails(annotation))
-                            .methodName(m.getName())
-                            .build(),
-                    ScheduledMethodReference.builder()
-                            .bean(bean)
-                            .method(m)
-                            .build()
-            );
+            ScheduledMethod method = processor.process(bean, beanName, m, embeddedValueResolver);
+            registry.add(method.getId(), method);
+            log.info("Scheduled method: {} has been registered with id: {}", method.getDetails().getMethodName(), method.getId());
         });
 
         log.debug("Finished processing bean: {}", beanName);

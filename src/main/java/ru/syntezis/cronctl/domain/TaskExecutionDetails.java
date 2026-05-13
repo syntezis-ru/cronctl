@@ -1,24 +1,37 @@
 package ru.syntezis.cronctl.domain;
 
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 
-@NoArgsConstructor
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TaskExecutionDetails {
 
     @Getter
-    private long preparationStartMills;
+    private final UUID executionId = UUID.randomUUID();
 
     @Getter
-    private long preparationEndMills;
+    private UUID scheduledMethodId;
 
     @Getter
-    private long methodExecutionStartMills;
+    private long executionStartMills;
 
     @Getter
-    private long methodExecutionEndMills;
+    private long executionStartNanos;
+
+    @Getter
+    private long executionEndMills;
+
+    @Getter
+    private long executionEndNanos;
+
+    @Getter
+    private long executionDurationNanos;
 
     @Getter
     private TaskExecutionStatus status;
@@ -26,30 +39,38 @@ public class TaskExecutionDetails {
     @Getter
     private FailDetails failDetails;
 
-    public static TaskExecutionDetails prepare() {
+    public static TaskExecutionDetails prepare(UUID scheduledMethodId) {
         TaskExecutionDetails details = new TaskExecutionDetails();
-        details.preparationStartMills = System.currentTimeMillis();
+        details.scheduledMethodId = scheduledMethodId;
         details.status = TaskExecutionStatus.PENDING;
         return details;
     }
 
     public void execute() {
-        this.preparationEndMills = System.currentTimeMillis();
-        this.status = TaskExecutionStatus.RUNNING;
-        this.methodExecutionStartMills = System.currentTimeMillis();
+        executionStartMills = System.currentTimeMillis();
+        executionStartNanos = System.nanoTime();
+        status = TaskExecutionStatus.RUNNING;
     }
 
     public TaskExecutionDetails failed(Throwable throwable, String errorMessage) {
-        this.methodExecutionEndMills = System.currentTimeMillis();
-        this.status = TaskExecutionStatus.FAILED;
-        this.failDetails = new FailDetails(throwable, errorMessage);
+        executionEndMills = System.currentTimeMillis();
+        executionEndNanos = System.nanoTime();
+        executionDurationNanos = executionEndNanos - executionStartNanos;
+        status = TaskExecutionStatus.FAILED;
+        failDetails = new FailDetails(throwable, errorMessage);
         return this;
     }
 
     public TaskExecutionDetails succeeded() {
-        this.methodExecutionEndMills = System.currentTimeMillis();
-        this.status = TaskExecutionStatus.SUCCEEDED;
+        executionEndMills = System.currentTimeMillis();
+        executionEndNanos = System.nanoTime();
+        executionDurationNanos = executionEndNanos - executionStartNanos;
+        status = TaskExecutionStatus.SUCCEEDED;
         return this;
+    }
+
+    public long getExecutionDurationMills() {
+        return TimeUnit.NANOSECONDS.toMillis(executionDurationNanos);
     }
 
     @Getter
