@@ -1,0 +1,15 @@
+# Production example
+#
+# Recommended configuration for production environments:
+#   - Custom API path to avoid conflicts with application routes
+#   - Authentication required for both the API and Swagger UI
+#   - Swagger group name aligned with the custom path
+
+cronctl:
+  api:
+    base-path: /manage/tasks
+    public-access: false
+  swagger:
+    public-access: false
+    group: task-management
+    paths-to-match: /manage/tasks/**

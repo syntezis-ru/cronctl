@@ -8,10 +8,3 @@ spring:
 schedule:
   cron:
     job-a: 0 */5 * * * *
-
-cronctl:
-  security:
-    enabled: false
-  swagger:
-    enabled: true
-    public-access: true

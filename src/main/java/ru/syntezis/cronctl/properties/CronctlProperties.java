@@ -16,9 +16,6 @@ public class CronctlProperties {
     private Api api = new Api();
 
     @NestedConfigurationProperty
-    private Security security = new Security();
-
-    @NestedConfigurationProperty
     private Swagger swagger = new Swagger();
 
     @Data
@@ -26,16 +23,8 @@ public class CronctlProperties {
     @AllArgsConstructor
     public static class Api {
 
-        private String defaultPath = "/api/cronctl"; // NOSONAR
-
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Security {
-
-        private boolean enabled = false;
+        private String basePath = "/api/cronctl"; // NOSONAR
+        private boolean publicAccess = true;
 
     }
 
@@ -44,7 +33,6 @@ public class CronctlProperties {
     @AllArgsConstructor
     public static class Swagger {
 
-        private boolean enabled = true;
         private boolean publicAccess = true;
         private String group = "cronctl";
         private String pathsToMatch = "/api/cronctl/**";

@@ -3,6 +3,7 @@ package ru.syntezis.cronctl.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
 import ru.syntezis.cronctl.bpp.ScheduleAnnotationBeanPostProcessor;
@@ -17,6 +18,7 @@ import ru.syntezis.cronctl.properties.CronctlProperties;
 import ru.syntezis.cronctl.scan.TaskRegistry;
 
 @AutoConfiguration
+@ConditionalOnProperty(value = "cronctl.enabled", matchIfMissing = true)
 @EnableConfigurationProperties(CronctlProperties.class)
 @Import({
         CronctlSecurityConfiguration.class,

@@ -1,0 +1,10 @@
+# Custom API base path
+#
+# Override the default /api/cronctl base path.
+# All endpoints and Swagger path matching update automatically.
+
+cronctl:
+  api:
+    base-path: /internal/scheduled-tasks
+  swagger:
+    paths-to-match: /internal/scheduled-tasks/**

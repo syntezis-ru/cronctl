@@ -1,0 +1,10 @@
+# Fully secured — API and Swagger both require authentication
+#
+# Both the cronctl API endpoints and Swagger UI are protected.
+# Authentication is required to access any cronctl resource.
+
+cronctl:
+  api:
+    public-access: false
+  swagger:
+    public-access: false

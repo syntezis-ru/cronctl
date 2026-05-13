@@ -1,0 +1,10 @@
+# Disabled
+#
+# Disables the entire cronctl library.
+# No beans are registered, no endpoints are created, no @Scheduled scanning occurs.
+#
+# Useful for disabling cronctl in a specific environment profile
+# without removing the dependency from the classpath.
+
+cronctl:
+  enabled: false

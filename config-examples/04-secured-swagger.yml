@@ -1,0 +1,11 @@
+# Public API, secured Swagger
+#
+# Swagger UI requires authentication to access.
+# Useful when you want to hide the API documentation from the public
+# while keeping the API itself open (e.g. for internal tooling).
+
+cronctl:
+  api:
+    public-access: true
+  swagger:
+    public-access: false

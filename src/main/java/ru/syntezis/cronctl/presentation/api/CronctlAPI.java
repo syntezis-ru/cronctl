@@ -16,7 +16,7 @@ import ru.syntezis.cronctl.presentation.dto.TasksResponseDto;
 
 import java.util.UUID;
 
-@RequestMapping("${cronctl.api.default-path}")
+@RequestMapping("${cronctl.api.base-path}")
 @Tag(name = "cronctl API", description = "HTTP API for managing @Scheduled methods")
 public interface CronctlAPI {
 

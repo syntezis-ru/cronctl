@@ -3,43 +3,37 @@
     {
       "name": "cronctl.enabled",
       "type": "java.lang.Boolean",
-      "description": "Enable cronctl.",
-      "defaultValue": "true"
+      "description": "Enable or disable the entire cronctl library. When false, no beans are registered and no endpoints are exposed.",
+      "defaultValue": true
     },
     {
-      "name": "cronctl.api.default-path",
+      "name": "cronctl.api.base-path",
       "type": "java.lang.String",
-      "description": "cronctl API path.",
+      "description": "Base path for the cronctl REST API.",
       "defaultValue": "/api/cronctl"
     },
     {
-      "name": "cronctl.security.enabled",
+      "name": "cronctl.api.public-access",
       "type": "java.lang.Boolean",
-      "description": "Use Spring-Security.",
-      "defaultValue": "false"
-    },
-    {
-      "name": "cronctl.swagger.enabled",
-      "type": "java.lang.Boolean",
-      "description": "Enable swagger.",
-      "defaultValue": "true"
+      "description": "When true, cronctl API endpoints are accessible without authentication. When false, authentication is required.",
+      "defaultValue": true
     },
     {
       "name": "cronctl.swagger.public-access",
       "type": "java.lang.Boolean",
-      "description": "Enable unauthenticated access to swagger.",
-      "defaultValue": "true"
+      "description": "When true, Swagger UI and API docs are accessible without authentication.",
+      "defaultValue": true
     },
     {
       "name": "cronctl.swagger.group",
       "type": "java.lang.String",
-      "description": "Swagger group.",
+      "description": "Name of the cronctl group shown in Swagger UI.",
       "defaultValue": "cronctl"
     },
     {
       "name": "cronctl.swagger.paths-to-match",
       "type": "java.lang.String",
-      "description": "Swagger paths to match.",
+      "description": "Path pattern used to include endpoints in the cronctl Swagger group.",
       "defaultValue": "/api/cronctl/**"
     }
   ]

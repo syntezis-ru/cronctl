@@ -1,0 +1,7 @@
+# Minimal configuration
+#
+# No cronctl properties are required. All defaults apply:
+#   - API available at /api/cronctl/** without authentication
+#   - Swagger UI is public, group name is "cronctl"
+#
+# Simply add the dependency to your project and cronctl is ready to use.

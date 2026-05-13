@@ -1,0 +1,10 @@
+# Custom Swagger group
+#
+# Override the Swagger group name and path pattern.
+# Useful when the application already has its own Swagger groups
+# and you want cronctl to appear under a specific label.
+
+cronctl:
+  swagger:
+    group: task-management
+    paths-to-match: /api/cronctl/**

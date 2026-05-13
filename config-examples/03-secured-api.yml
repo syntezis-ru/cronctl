@@ -1,0 +1,11 @@
+# Secured API, public Swagger
+#
+# Cronctl API endpoints require authentication.
+# Swagger UI remains publicly accessible so developers can browse the docs
+# without logging in — but they will need credentials to execute requests.
+
+cronctl:
+  api:
+    public-access: false
+  swagger:
+    public-access: true
