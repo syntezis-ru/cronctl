@@ -20,6 +20,55 @@ Add the dependency to your project — cronctl auto-configures itself, scans all
 
 ## Installation
 
+cronctl is distributed via [GitHub Packages](https://github.com/syntezis-ru/cronctl/packages).
+
+### Step 1 — Authenticate with GitHub Packages
+
+GitHub Packages requires authentication even for public packages.
+Generate a [personal access token](https://github.com/settings/tokens) with the `read:packages` scope,
+then add it to your `~/.m2/settings.xml`:
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github-cronctl</id>
+            <username>YOUR_GITHUB_USERNAME</username>
+            <password>YOUR_GITHUB_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+### Step 2 — Add the repository
+
+**Maven** (`pom.xml`):
+
+```xml
+<repositories>
+    <repository>
+        <id>github-cronctl</id>
+        <url>https://maven.pkg.github.com/syntezis-ru/cronctl</url>
+    </repository>
+</repositories>
+```
+
+**Gradle** (`build.gradle`):
+
+```groovy
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/syntezis-ru/cronctl")
+        credentials {
+            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+```
+
+### Step 3 — Add the dependency
+
 **Maven:**
 
 ```xml
@@ -37,7 +86,7 @@ implementation 'ru.syntezis:cronctl-spring-boot-starter:0.0.1'
 ```
 
 No additional configuration is required. cronctl registers itself via Spring Boot
-autoconfiguration as soon as the dependency is on the classpath.
+auto-configuration as soon as the dependency is on the classpath.
 
 > **Swagger UI**
 > cronctl ships with `springdoc-openapi-starter-webmvc-ui` as a transitive dependency.
