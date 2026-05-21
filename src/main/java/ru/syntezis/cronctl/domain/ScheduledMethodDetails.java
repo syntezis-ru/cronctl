@@ -7,6 +7,10 @@ import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
+/**
+ * Immutable metadata for a registered {@code @Scheduled} method:
+ * its unique id, name, and resolved schedule configuration.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

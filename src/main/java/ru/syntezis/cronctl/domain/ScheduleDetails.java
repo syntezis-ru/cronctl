@@ -5,6 +5,14 @@ import lombok.Data;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Raw schedule parameters extracted from a {@code @Scheduled} annotation.
+ *
+ * <p>Numeric fields ({@code fixedRate}, {@code fixedDelay}, {@code initialDelay}) hold
+ * {@code -1} when not set, matching the annotation defaults.
+ * String variants ({@code fixedRateString}, etc.) hold an empty string when not set.
+ * Property placeholders in string fields are resolved before this object is created.
+ */
 @Data
 @Builder
 public class ScheduleDetails {

@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.6</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
@@ -23,8 +23,32 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.encoding>UTF-8</project.encoding>
 
-        <springdoc-openapi-starter-webmvc-ui.version>3.0.3</springdoc-openapi-starter-webmvc-ui.version>
+        <cronctl.version>0.0.1</cronctl.version>
+
+        <spring-boot.version>3.5.14</spring-boot.version>
+        <springdoc-openapi-starter-webmvc-ui.version>2.6.0</springdoc-openapi-starter-webmvc-ui.version>
+
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <classgraph.version>4.8.112</classgraph.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- CVE-2025-48924: Uncontrolled Recursion in ClassUtils.getClass() -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- CVE-2021-47621: XXE vulnerability in ClassGraph -->
+            <dependency>
+                <groupId>io.github.classgraph</groupId>
+                <artifactId>classgraph</artifactId>
+                <version>${classgraph.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -40,13 +64,13 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <dependency>
             <groupId>ru.syntezis</groupId>
             <artifactId>cronctl-spring-boot-starter</artifactId>
-            <version>0.0.1</version>
+            <version>${cronctl.version}</version>
         </dependency>
 
         <dependency>
@@ -62,14 +86,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

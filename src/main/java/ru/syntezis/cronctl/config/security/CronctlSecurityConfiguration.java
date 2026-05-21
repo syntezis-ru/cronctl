@@ -1,7 +1,7 @@
 package ru.syntezis.cronctl.config.security;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.security.autoconfigure.web.servlet.SecurityFilterProperties;
+import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,7 +19,7 @@ public class CronctlSecurityConfiguration {
 
     @Bean(name = "cronctlPublicAccessSecurityFilterChain")
     @ConditionalOnProperty(value = "cronctl.api.public-access", havingValue = "true", matchIfMissing = true)
-    @Order(SecurityFilterProperties.BASIC_AUTH_ORDER - 2)
+    @Order(SecurityProperties.BASIC_AUTH_ORDER - 2)
     public SecurityFilterChain cronctlPublicAccessSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .securityMatcher(apiSecurityMatcherPattern)
@@ -30,7 +30,7 @@ public class CronctlSecurityConfiguration {
 
     @Bean(name = "cronctlAuthorizedAccessSecurityFilterChain")
     @ConditionalOnProperty(value = "cronctl.api.public-access", havingValue = "false")
-    @Order(SecurityFilterProperties.BASIC_AUTH_ORDER - 2)
+    @Order(SecurityProperties.BASIC_AUTH_ORDER - 2)
     public SecurityFilterChain cronctlAuthorizedAccessSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .securityMatcher(apiSecurityMatcherPattern)

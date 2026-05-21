@@ -12,6 +12,35 @@
     <name>cronctl-spring-boot-starter</name>
     <description>HTTP API for managing @Scheduled methods in Spring Boot applications</description>
 
+    <url>https://github.com/syntezis-ru/cronctl</url>
+
+    <organization>
+        <name>Syntezis</name>
+        <url>https://syntezis.ru</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>1</id>
+            <name>silenzzz</name>
+            <email>silenzzz@syntezis.ru</email>
+            <url>https://github.com/silenzzz</url>
+            <timezone>UTC+3</timezone>
+            <organization>Syntezis</organization>
+            <organizationUrl>https://syntezis.ru</organizationUrl>
+        </developer>
+    </developers>
+
+    <issueManagement>
+        <system>GitHub</system>
+        <url>https://github.com/syntezis-ru/cronctl/issues/new/choose</url>
+    </issueManagement>
+
+    <ciManagement>
+        <system>GitHub</system>
+        <url>https://github.com/syntezis-ru/cronctl/actions</url>
+    </ciManagement>
+
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>
@@ -28,9 +57,9 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/syntezis-ru/cronctl</url>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://central.sonatype.com</url>
         </repository>
     </distributionManagement>
 
@@ -45,12 +74,18 @@
         <project.encoding>UTF-8</project.encoding>
 
         <!-- Dependency versions -->
-        <spring-boot.version>4.0.6</spring-boot.version>
+        <spring-boot.version>3.5.14</spring-boot.version>
         <mapstruct.version>1.6.0</mapstruct.version>
-        <springdoc-openapi-starter-webmvc-ui.version>3.0.3</springdoc-openapi-starter-webmvc-ui.version>
+        <springdoc-openapi-starter-webmvc-ui.version>2.6.0</springdoc-openapi-starter-webmvc-ui.version>
+        <jspecify.version>1.0.0</jspecify.version>
         <byte-buddy.version>1.18.8</byte-buddy.version>
         <vavr.version>1.0.1</vavr.version>
         <easy-random.version>5.0.0</easy-random.version>
+
+        <!-- Dependency management versions -->
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <classgraph.version>4.8.112</classgraph.version>
+        <objenesis.version>3.3</objenesis.version>
 
         <!-- Plugin versions -->
         <lombok.version>1.18.46</lombok.version>
@@ -60,6 +95,9 @@
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
+        <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
+        <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+        <jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +108,34 @@
                 <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- CVE-2025-48924: Uncontrolled Recursion in ClassUtils.getClass() -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- CVE-2021-47621: XXE vulnerability in ClassGraph -->
+            <dependency>
+                <groupId>io.github.classgraph</groupId>
+                <artifactId>classgraph</artifactId>
+                <version>${classgraph.version}</version>
+            </dependency>
+
+            <!-- Resolve conflict: byte-buddy 1.18.8 (explicit) vs 1.17.8 (via spring-boot-starter-test) -->
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${byte-buddy.version}</version>
+            </dependency>
+
+            <!-- Resolve conflict: objenesis 3.3 (mockito) vs 3.1 (easy-random-core) -->
+            <dependency>
+                <groupId>org.objenesis</groupId>
+                <artifactId>objenesis</artifactId>
+                <version>${objenesis.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -93,7 +159,6 @@
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
-            <version>${byte-buddy.version}</version>
             <scope>test</scope>
             <optional>true</optional>
         </dependency>
@@ -110,7 +175,13 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>${jspecify.version}</version>
         </dependency>
 
         <dependency>
@@ -148,20 +219,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -173,7 +232,47 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>-XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <excludes>
+                        <!-- Generated MapStruct implementations -->
+                        <exclude>**/presentation/mapper/*MapperImpl.class</exclude>
+                        <!-- Pure data classes — no logic to measure -->
+                        <exclude>**/presentation/dto/**</exclude>
+                        <exclude>**/domain/ScheduleDetails.class</exclude>
+                        <exclude>**/domain/ScheduledMethodDetails.class</exclude>
+                        <exclude>**/domain/ScheduledMethodReference.class</exclude>
+                        <exclude>**/domain/ScheduledBeanDetails.class</exclude>
+                        <!-- Spring configuration classes -->
+                        <exclude>**/config/**</exclude>
+                        <!-- Enums, exceptions, properties — trivial or generated -->
+                        <exclude>**/enums/**</exclude>
+                        <exclude>**/exception/**</exclude>
+                        <exclude>**/properties/**</exclude>
+                        <exclude>**/epp/**</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
 
@@ -266,6 +365,40 @@
                         <id>attach-sources</id>
                         <goals>
                             <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>${central-publishing-maven-plugin.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>false</autoPublish>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>${maven-gpg-plugin.version}</version>
+                <configuration>
+                    <keyname>${env.SILENZZZ_SYNTEZIS_GPG_KEY_ID}</keyname>
+                    <passphrase>${env.SILENZZZ_SYNTEZIS_GPG_PASSPHRASE}</passphrase>
+                    <gpgArguments>
+                        <arg>--pinentry-mode</arg>
+                        <arg>loopback</arg>
+                    </gpgArguments>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>sign</goal>
                         </goals>
                     </execution>
                 </executions>

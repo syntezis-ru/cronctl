@@ -29,11 +29,6 @@ public class CronctlController implements CronctlAPI {
                 .map(taskMapper::toDto)
                 .toList();
 
-        if (response.isEmpty()) {
-            return ResponseEntity.ok()
-                    .build();
-        }
-
         return ResponseEntity.ok(TasksResponseDto.builder()
                 .tasks(response)
                 .build());
