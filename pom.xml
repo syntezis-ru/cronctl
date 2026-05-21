@@ -287,6 +287,7 @@
                     <charset>${project.encoding}</charset>
                     <failOnError>false</failOnError>
                     <quiet>true</quiet>
+                    <excludePackageNames>ru.syntezis.cronctl.bpp</excludePackageNames>
                 </configuration>
                 <executions>
                     <execution>
