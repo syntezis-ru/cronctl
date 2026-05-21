@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import ru.syntezis.cronctl.domain.Task;
 import ru.syntezis.cronctl.domain.TaskExecutionDetails;
 import ru.syntezis.cronctl.exception.TaskNotFoundException;
-import ru.syntezis.cronctl.scan.TaskRegistry;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +12,13 @@ import java.util.UUID;
 
 import static java.lang.String.format;
 
+/**
+ * Main facade for managing registered {@code @Scheduled} tasks.
+ *
+ * <p>Provides operations to list, look up, and manually execute tasks
+ * that were discovered by {@link ru.syntezis.cronctl.bpp.ScheduleAnnotationBeanPostProcessor}
+ * at application startup.
+ */
 @RequiredArgsConstructor
 @Slf4j
 public class Cronctl {
@@ -20,18 +26,45 @@ public class Cronctl {
     private final TaskRegistry registry;
     private final TaskExecutor executor;
 
+    /**
+     * Returns all tasks currently registered in the registry.
+     *
+     * @return unmodifiable snapshot of all registered tasks; empty list if none exist
+     */
     public List<Task> getAllTasks() {
         return registry.getAll();
     }
 
+    /**
+     * Checks whether a task with the given id is registered.
+     *
+     * @param id task UUID to look up
+     * @return {@code true} if the task is registered, {@code false} otherwise
+     */
     public boolean taskExists(UUID id) {
         return registry.contains(id);
     }
 
+    /**
+     * Finds a registered task by its UUID.
+     *
+     * @param id task UUID to look up
+     * @return an {@link Optional} containing the task, or empty if not found
+     */
     public Optional<Task> getById(UUID id) {
         return registry.getById(id);
     }
 
+    /**
+     * Manually triggers the {@code @Scheduled} method associated with the given task id.
+     *
+     * <p>The method is invoked synchronously on the calling thread.
+     * Execution metrics and outcome are captured in the returned {@link TaskExecutionDetails}.
+     *
+     * @param id UUID of the task to execute
+     * @return execution details including status, timing, and failure information if any
+     * @throws TaskNotFoundException if no task with the given id is registered
+     */
     public TaskExecutionDetails executeTaskByID(UUID id) {
         Task task = registry.getById(id)
                 .orElseThrow(() -> {

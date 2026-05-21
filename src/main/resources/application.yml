@@ -1,8 +1,0 @@
-cronctl:
-  api:
-    base-path: /api/cronctl
-  security:
-    enabled: false
-  swagger:
-    enabled: true
-    public-access: true

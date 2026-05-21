@@ -9,15 +9,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
+import ru.syntezis.cronctl.core.TaskRegistry;
 import ru.syntezis.cronctl.domain.ScheduledMethod;
 import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.Task;
 import ru.syntezis.cronctl.filter.ScheduledMethodsFilter;
 import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
-import ru.syntezis.cronctl.scan.TaskRegistry;
+import ru.syntezis.cronctl.util.condition.Conditions;
 import ru.syntezis.cronctl.util.generator.BeanCreationRequest;
 import ru.syntezis.cronctl.util.generator.BeanGenerator;
-import ru.syntezis.cronctl.util.condition.Conditions;
 import ru.syntezis.cronctl.util.generator.GeneratedBeanDetails;
 
 import java.util.List;

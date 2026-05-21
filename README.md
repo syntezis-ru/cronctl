@@ -1,9 +1,16 @@
-# cronctl-spring-boot-starter
+<div style="text-align: center;">
+  <img src="docs/logo.svg" alt="cronctl" height="96"/>
+  <h1>cronctl-spring-boot-starter</h1>
+</div>
 
-[![CI](https://github.com/YOUR_USERNAME/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
+[![CI](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
+[![Qodana](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/ru.syntezis/cronctl-spring-boot-starter)](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter)
+[![GitHub Release](https://img.shields.io/github/v/release/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot](https://img.shields.io/badge/spring--boot-4.0.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/spring--boot-3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Last Commit](https://img.shields.io/github/last-commit/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/commits/master)
 
 A Spring Boot starter that exposes a REST API for viewing and manually triggering
 methods annotated with `@Scheduled`.
@@ -16,58 +23,12 @@ Add the dependency to your project — cronctl auto-configures itself, scans all
 | Dependency  | Version |
 |-------------|---------|
 | Java        | 21+     |
-| Spring Boot | 4.0.x   |
+| Spring Boot | 3.5.14  |
 
 ## Installation
 
-cronctl is distributed via [GitHub Packages](https://github.com/syntezis-ru/cronctl/packages).
-
-### Step 1 — Authenticate with GitHub Packages
-
-GitHub Packages requires authentication even for public packages.
-Generate a [personal access token](https://github.com/settings/tokens) with the `read:packages` scope,
-then add it to your `~/.m2/settings.xml`:
-
-```xml
-<settings>
-    <servers>
-        <server>
-            <id>github-cronctl</id>
-            <username>YOUR_GITHUB_USERNAME</username>
-            <password>YOUR_GITHUB_TOKEN</password>
-        </server>
-    </servers>
-</settings>
-```
-
-### Step 2 — Add the repository
-
-**Maven** (`pom.xml`):
-
-```xml
-<repositories>
-    <repository>
-        <id>github-cronctl</id>
-        <url>https://maven.pkg.github.com/syntezis-ru/cronctl</url>
-    </repository>
-</repositories>
-```
-
-**Gradle** (`build.gradle`):
-
-```groovy
-repositories {
-    maven {
-        url = uri("https://maven.pkg.github.com/syntezis-ru/cronctl")
-        credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
-            password = project.findProperty("gpr.key")  ?: System.getenv("GITHUB_TOKEN")
-        }
-    }
-}
-```
-
-### Step 3 — Add the dependency
+cronctl is available on [Maven Central](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter).
+No additional repository configuration is required.
 
 **Maven:**
 
@@ -187,7 +148,7 @@ All properties are optional. The defaults work out of the box.
 | `cronctl.swagger.group`          | `cronctl`         | Group name shown in Swagger UI                                                             |
 | `cronctl.swagger.paths-to-match` | `/api/cronctl/**` | Path pattern used to include endpoints in the cronctl Swagger group                        |
 
-See [`config-examples/`](config-examples/) for ready-to-use configuration files covering
+See [`docs/config-examples/`](docs/config-examples/) for ready-to-use configuration files covering
 common scenarios: custom paths, secured API, production setup, and more.
 
 ## Security
@@ -227,3 +188,13 @@ cronctl:
 ## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+<div style="text-align: center;">
+  <a href="https://syntezis.ru">
+    <img src="https://syntezis.ru/img/logo.svg" alt="Syntezis" height="40"/>
+  </a>
+  <br/>
+  <sub>Built and maintained by <a href="https://syntezis.ru">Syntezis</a></sub>
+</div>

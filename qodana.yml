@@ -1,0 +1,18 @@
+version: "1.0"
+
+linter: jetbrains/qodana-jvm-community:2025.2
+
+projectJDK: "21"
+
+profile:
+  name: qodana.recommended
+
+exclude:
+  - name: All
+    paths:
+      - sample-app
+
+failureConditions:
+  severityThresholds:
+    critical: 0
+    high: 5

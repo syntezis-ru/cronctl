@@ -7,6 +7,10 @@ import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
+/**
+ * Combines the metadata ({@link ScheduledMethodDetails}) and the execution reference
+ * ({@link ScheduledMethodReference}) of a single {@code @Scheduled} method.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

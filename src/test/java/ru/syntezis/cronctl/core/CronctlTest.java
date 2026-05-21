@@ -1,7 +1,6 @@
 package ru.syntezis.cronctl.core;
 
 import io.vavr.control.Try;
-import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.tuple.Pair;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.jeasy.random.EasyRandom;
@@ -12,27 +11,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.syntezis.cronctl.domain.*;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
-import ru.syntezis.cronctl.scan.TaskRegistry;
 import ru.syntezis.cronctl.util.Repeats;
 import ru.syntezis.cronctl.util.ScheduleUtils;
 import ru.syntezis.cronctl.util.condition.Conditions;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CronctlTest {

@@ -7,6 +7,10 @@ import lombok.NoArgsConstructor;
 
 import java.lang.reflect.Method;
 
+/**
+ * Holds the runtime reference needed to invoke a {@code @Scheduled} method:
+ * the Spring bean instance and the reflective {@link java.lang.reflect.Method} handle.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -12,10 +12,23 @@ import ru.syntezis.cronctl.util.ScheduleUtils;
 import java.lang.reflect.Method;
 import java.util.UUID;
 
+/**
+ * Builds a fully-populated {@link ScheduledMethod} from a discovered {@code @Scheduled} method.
+ */
 @RequiredArgsConstructor
 @Slf4j
 public class ScheduledBeanProcessor {
 
+    /**
+     * Creates a {@link ScheduledMethod} capturing the method's identity, schedule configuration,
+     * and a reference to the bean instance needed for execution.
+     *
+     * @param bean            the Spring bean that owns the method
+     * @param beanName        name of the bean in the application context
+     * @param scheduledMethod the reflective {@link Method} annotated with {@code @Scheduled}
+     * @param resolver        resolver for property placeholders in annotation attributes; may be {@code null}
+     * @return a fully-populated {@link ScheduledMethod}
+     */
     public ScheduledMethod process(Object bean, String beanName, Method scheduledMethod, StringValueResolver resolver) {
         UUID id = UUID.randomUUID();
         String methodName = scheduledMethod.getName();

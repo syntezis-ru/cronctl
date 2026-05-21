@@ -8,14 +8,22 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.EmbeddedValueResolverAware;
 import org.springframework.util.StringValueResolver;
+import ru.syntezis.cronctl.core.TaskRegistry;
 import ru.syntezis.cronctl.domain.ScheduledMethod;
 import ru.syntezis.cronctl.filter.ScheduledMethodsFilter;
 import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
-import ru.syntezis.cronctl.scan.TaskRegistry;
 
 import java.lang.reflect.Method;
 import java.util.List;
 
+/**
+ * Spring {@link BeanPostProcessor} that scans every initialized bean for methods
+ * annotated with {@code @Scheduled} and registers them in {@link TaskRegistry}.
+ *
+ * <p>Implements {@link EmbeddedValueResolverAware} to resolve property placeholders
+ * (e.g. {@code ${my.cron}}) in annotation attributes before storing them.
+ * Runs after bean initialization, so all bean dependencies are already injected.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, EmbeddedValueResolverAware {
