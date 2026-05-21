@@ -32,7 +32,9 @@ jobs:
           server-password: MAVEN_PASSWORD
 
       - name: Import GPG key
-        run: echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --yes --import
+          gpg --list-secret-keys --keyid-format LONG
 
       - name: Set version
         run: |
