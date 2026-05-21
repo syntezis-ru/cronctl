@@ -53,7 +53,7 @@ jobs:
             sample-app/pom.xml
 
       - name: Build and verify
-        run: ./mvnw clean verify
+        run: ./mvnw clean verify -Dgpg.skip=true
 
       - name: Commit version bump
         run: |
