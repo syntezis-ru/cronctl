@@ -47,7 +47,7 @@ jobs:
           cache: 'maven'
 
       - name: Build and run tests
-        run: ./mvnw clean verify
+        run: ./mvnw clean verify -Dgpg.skip=true
 
       - name: Upload coverage report
         if: always()
