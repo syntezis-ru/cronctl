@@ -83,7 +83,7 @@
         <easy-random.version>5.0.0</easy-random.version>
 
         <!-- Dependency management versions -->
-        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <commons-lang3.version>3.20.0</commons-lang3.version>
         <classgraph.version>4.8.112</classgraph.version>
         <objenesis.version>3.3</objenesis.version>
 
