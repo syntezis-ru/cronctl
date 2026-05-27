@@ -78,7 +78,7 @@
         <!-- Dependency versions -->
         <spring-boot.version>3.5.14</spring-boot.version>
         <mapstruct.version>1.6.3</mapstruct.version>
-        <springdoc-openapi-starter-webmvc-ui.version>2.6.0</springdoc-openapi-starter-webmvc-ui.version>
+        <springdoc-openapi-starter-webmvc-ui.version>3.0.3</springdoc-openapi-starter-webmvc-ui.version>
         <jspecify.version>1.0.0</jspecify.version>
         <byte-buddy.version>1.18.8</byte-buddy.version>
         <vavr.version>1.0.1</vavr.version>
