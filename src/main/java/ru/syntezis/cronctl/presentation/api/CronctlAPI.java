@@ -39,18 +39,18 @@ public interface CronctlAPI {
             @Parameter(description = "Return only tasks belonging to this group") @RequestParam(name = "group", required = false) @Nullable String group,
             @Parameter(description = "Return only tasks carrying this tag") @RequestParam(name = "tag", required = false) @Nullable String tag);
 
-    @PostMapping("/execute/{id}")
+    @PostMapping("/tasks/{id}/execute")
     @Operation(
             summary = "Execute scheduled task",
-            description = "Manually triggers a @Scheduled method by its id"
+            description = "Manually triggers a @Scheduled method synchronously by its id. " +
+                    "Task-level failures are returned as 200 with status=FAILED in the body."
     )
-    @ApiResponse(responseCode = "200", description = "Task executed successfully",
+    @ApiResponse(responseCode = "200", description = "Task execution completed (check status field for SUCCEEDED or FAILED)",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = TaskExecutionResultDto.class)
             )
     )
     @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
-    @ApiResponse(responseCode = "500", description = "Task execution failed", content = @Content)
-    ResponseEntity<TaskExecutionResultDto> executeTask(@PathVariable("id") UUID taskId);
+    ResponseEntity<TaskExecutionResultDto> executeTask(@PathVariable("id") UUID id);
 
 }

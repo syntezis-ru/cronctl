@@ -20,11 +20,14 @@ import java.util.List;
  * <p>See {@code config-examples/} in the project root for ready-to-use configuration snippets.
  */
 @Data
-@ConfigurationProperties(prefix = "cronctl", ignoreUnknownFields = false)
+@ConfigurationProperties(prefix = "cronctl")
 public class CronctlProperties {
 
     /** When {@code false}, no cronctl beans are registered and no endpoints are created. */
     private boolean enabled = true;
+
+    @NestedConfigurationProperty
+    private Executor executor = new Executor();
 
     @NestedConfigurationProperty
     private Scan scan = new Scan();
@@ -34,6 +37,28 @@ public class CronctlProperties {
 
     @NestedConfigurationProperty
     private Swagger swagger = new Swagger();
+
+    /**
+     * Async executor configuration.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Executor {
+
+        /** Number of threads in the async execution pool. */
+        private int threadPoolSize = 4;
+
+        /** Maximum number of tasks that can wait in the submission queue. */
+        private int queueCapacity = 100;
+
+        /**
+         * Default execution timeout in seconds. {@code 0} disables the timeout.
+         * Can be overridden per task via {@code @CronctlTask(timeout=...)}.
+         */
+        private long timeoutSeconds = 60;
+
+    }
 
     /**
      * Scheduled method discovery configuration.

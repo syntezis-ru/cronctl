@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
+import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -41,7 +42,7 @@ class CronctlTest {
     private final TaskRegistry registry = new TaskRegistry();
 
     @Spy
-    private final TaskExecutor executor = new TaskExecutor();
+    private final BlockingTaskExecutor executor = new BlockingTaskExecutor();
 
     @InjectMocks
     private Cronctl underTest;
@@ -74,6 +75,66 @@ class CronctlTest {
         // Then
         assertThat(actual)
                 .containsExactlyInAnyOrderElementsOf(expected);
+    }
+
+    @Test
+    void getByTag_TasksWithMatchingTag_ReturnsOnlyMatchingTasks() {
+        // Given
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        Task withTag    = buildTask(id1, "withTag",    List.of("billing"));
+        Task withoutTag = buildTask(id2, "withoutTag", List.of("other"));
+        registry.add(id1, withTag);
+        registry.add(id2, withoutTag);
+
+        // When
+        final List<Task> actual = underTest.getByTag("billing");
+
+        // Then
+        assertThat(actual).containsExactly(withTag);
+    }
+
+    @Test
+    void getByTag_NoMatchingTag_ReturnsEmptyList() {
+        // Given
+        UUID id = UUID.randomUUID();
+        registry.add(id, buildTask(id, "task", List.of("alpha")));
+
+        // When
+        final List<Task> actual = underTest.getByTag("nonexistent");
+
+        // Then
+        assertThat(actual).isEmpty();
+    }
+
+    @Test
+    void getByGroup_TasksInMatchingGroup_ReturnsOnlyMatchingTasks() {
+        // Given
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        Task inGroup    = buildTaskWithGroup(id1, "inGroup",    "reports");
+        Task otherGroup = buildTaskWithGroup(id2, "otherGroup", "billing");
+        registry.add(id1, inGroup);
+        registry.add(id2, otherGroup);
+
+        // When
+        final List<Task> actual = underTest.getByGroup("reports");
+
+        // Then
+        assertThat(actual).containsExactly(inGroup);
+    }
+
+    @Test
+    void getByGroup_NoMatchingGroup_ReturnsEmptyList() {
+        // Given
+        UUID id = UUID.randomUUID();
+        registry.add(id, buildTaskWithGroup(id, "task", "someGroup"));
+
+        // When
+        final List<Task> actual = underTest.getByGroup("nonexistent");
+
+        // Then
+        assertThat(actual).isEmpty();
     }
 
     @Test
@@ -230,6 +291,32 @@ class CronctlTest {
     @AfterEach
     void cleanup() {
         registry.clear();
+    }
+
+    private static Task buildTask(UUID id, String methodName, List<String> tags) {
+        return Task.builder()
+                .label(methodName)
+                .description(methodName)
+                .group("default")
+                .tags(tags)
+                .details(ScheduledMethodDetails.builder()
+                        .id(id)
+                        .methodName(methodName)
+                        .build())
+                .build();
+    }
+
+    private static Task buildTaskWithGroup(UUID id, String methodName, String group) {
+        return Task.builder()
+                .label(methodName)
+                .description(methodName)
+                .group(group)
+                .tags(List.of())
+                .details(ScheduledMethodDetails.builder()
+                        .id(id)
+                        .methodName(methodName)
+                        .build())
+                .build();
     }
 
     private static class SampleScheduledThrowingClass {

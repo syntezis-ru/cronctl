@@ -34,6 +34,10 @@ public class TaskResponseDto {
     @Schema(description = "Tags for categorization and filtering", example = "[\"billing\", \"critical\"]")
     private List<String> tags;
 
+    @JsonProperty("timeout_seconds")
+    @Schema(description = "Task-level execution timeout in seconds; 0 means use the global config", example = "30")
+    private long timeoutSeconds;
+
     @JsonProperty("details")
     @Schema(description = "Method details including id, name and schedule configuration")
     private ScheduledMethodDetailsDto details;

@@ -25,9 +25,13 @@ public class Task {
     private String group;
     private List<String> tags;
 
+    /** Task-level timeout in seconds. {@code 0} means use the global config. */
+    private long timeoutSeconds;
+
     private ScheduledMethodDetails details;
     private ScheduledMethodReference reference;
 
+    /** Returns the task's unique identifier, which is the UUID of its {@link ScheduledMethodDetails}. */
     public UUID getId() {
         return details.getId();
     }

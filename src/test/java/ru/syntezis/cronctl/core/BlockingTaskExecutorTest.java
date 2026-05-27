@@ -11,6 +11,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.scheduling.annotation.Scheduled;
+import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -33,10 +34,10 @@ import static org.mockito.Mockito.verify;
 import static ru.syntezis.cronctl.util.generator.BeanGenerator.randomString;
 
 @ExtendWith(MockitoExtension.class)
-class TaskExecutorTest {
+class BlockingTaskExecutorTest {
 
     @Spy
-    private final TaskExecutor underTest = new TaskExecutor();
+    private final BlockingTaskExecutor underTest = new BlockingTaskExecutor();
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2, 3, 10, 100, 999, 9999})

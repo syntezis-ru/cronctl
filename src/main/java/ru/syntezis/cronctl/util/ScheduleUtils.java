@@ -49,6 +49,7 @@ public class ScheduleUtils {
         if (resolver == null || value.isEmpty()) {
             return value;
         }
+
         String resolved = resolver.resolveStringValue(value);
         return resolved != null ? resolved : value;
     }

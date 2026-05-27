@@ -59,6 +59,7 @@ public class ScheduledBeanProcessor {
                         .orElse("default")
                 )
                 .tags(taskAnnotation.map(t -> Arrays.stream(t.tags()).toList()).orElse(List.of()))
+                .timeoutSeconds(taskAnnotation.map(t -> t.timeUnit().toSeconds(t.timeout())).orElse(0L))
                 .details(ScheduledMethodDetails.builder()
                         .id(id)
                         .schedule(ScheduleUtils.assembleScheduleDetails(annotation, resolver))

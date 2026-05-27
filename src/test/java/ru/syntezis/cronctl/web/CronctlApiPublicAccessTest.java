@@ -33,7 +33,7 @@ class CronctlApiPublicAccessTest {
 
     @Test
     void executeTask_PublicAccess_UnknownId_Returns404() throws Exception {
-        mockMvc.perform(post("/api/cronctl/execute/{id}", UUID.randomUUID()))
+        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
                 .andExpect(status().isNotFound());
     }
 
@@ -41,7 +41,7 @@ class CronctlApiPublicAccessTest {
     void executeTask_PublicAccess_RegisteredId_Returns200() throws Exception {
         UUID id = cronctl.getAllTasks().getFirst().getId();
 
-        mockMvc.perform(post("/api/cronctl/execute/{id}", id))
+        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("application/json"));
     }

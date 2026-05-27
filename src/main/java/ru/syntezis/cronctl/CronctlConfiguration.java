@@ -63,4 +63,16 @@ public class CronctlConfiguration {
     @Nullable
     private final List<String> scanBasePackages;
 
+    /** Overrides {@code cronctl.executor.thread-pool-size}. */
+    @Nullable
+    private final Integer executorThreadPoolSize;
+
+    /** Overrides {@code cronctl.executor.queue-capacity}. */
+    @Nullable
+    private final Integer executorQueueCapacity;
+
+    /** Overrides {@code cronctl.executor.timeout-seconds}. */
+    @Nullable
+    private final Long executorTimeoutSeconds;
+
 }

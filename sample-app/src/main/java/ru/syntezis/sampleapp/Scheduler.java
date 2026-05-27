@@ -30,14 +30,14 @@ public class Scheduler {
 
     @CronctlTask(
             label = "Heavy Job",
-            description = "Long-running job, sleeps 5 seconds to simulate work",
+            description = "Long-running job, sleeps 6 minutes to simulate work",
             group = "processing",
             tags = {"processing", "heavy", "critical"}
     )
     @Scheduled(fixedRate = 10L, timeUnit = TimeUnit.MINUTES)
     public void runHeavyJob() throws InterruptedException {
         log.info("Heavy job started");
-        Thread.sleep(5000L);
+        Thread.sleep(360000L);
         log.info("Heavy job finished");
     }
 
