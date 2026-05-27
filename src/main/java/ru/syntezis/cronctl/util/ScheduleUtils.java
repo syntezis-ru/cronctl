@@ -4,7 +4,7 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringValueResolver;
-import ru.syntezis.cronctl.domain.ScheduleDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 
 /**
  * Utility for extracting schedule configuration from a {@code @Scheduled} annotation.

@@ -1,4 +1,4 @@
-package ru.syntezis.cronctl.domain;
+package ru.syntezis.cronctl.domain.task;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

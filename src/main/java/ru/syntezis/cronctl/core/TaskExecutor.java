@@ -1,7 +1,10 @@
 package ru.syntezis.cronctl.core;
 
 import lombok.extern.slf4j.Slf4j;
-import ru.syntezis.cronctl.domain.*;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -28,13 +31,12 @@ public class TaskExecutor {
      * @return execution details including status, timing in millis/nanos, and failure information if any
      */
     public TaskExecutionDetails executeTask(Task task) {
-        ScheduledMethod scheduledMethod = task.getMethod();
-        ScheduledMethodDetails details = scheduledMethod.getDetails();
+        ScheduledMethodDetails details = task.getDetails();
 
         UUID methodId = details.getId();
         String methodName = details.getMethodName();
 
-        ScheduledMethodReference reference = scheduledMethod.getReference();
+        ScheduledMethodReference reference = task.getReference();
         Object bean = reference.getBean();
         Method method = reference.getMethod();
 

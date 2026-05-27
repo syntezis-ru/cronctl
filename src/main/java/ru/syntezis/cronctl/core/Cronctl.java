@@ -2,8 +2,8 @@ package ru.syntezis.cronctl.core;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import ru.syntezis.cronctl.domain.Task;
-import ru.syntezis.cronctl.domain.TaskExecutionDetails;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 import ru.syntezis.cronctl.exception.TaskNotFoundException;
 
 import java.util.List;
@@ -33,6 +33,26 @@ public class Cronctl {
      */
     public List<Task> getAllTasks() {
         return registry.getAll();
+    }
+
+    /**
+     * Returns all tasks carrying the given tag.
+     *
+     * @param tag tag to filter by
+     * @return tasks that include {@code tag}; empty list if none match
+     */
+    public List<Task> getByTag(String tag) {
+        return registry.getByTag(tag);
+    }
+
+    /**
+     * Returns all tasks belonging to the given group.
+     *
+     * @param group group name to filter by
+     * @return tasks whose group equals {@code group}; empty list if none match
+     */
+    public List<Task> getByGroup(String group) {
+        return registry.getByGroup(group);
     }
 
     /**

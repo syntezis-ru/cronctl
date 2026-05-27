@@ -6,10 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.Delegate;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Data
@@ -17,14 +15,16 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "List of all registered @Scheduled tasks")
-public class TasksResponseDto implements Collection<TaskResponseDto> {
+public class TasksResponseDto {
 
     @JsonProperty("tasks")
-    @Delegate
     @Builder.Default
     @Schema(description = "Registered tasks")
-    private final List<TaskResponseDto> tasks = new ArrayList<>();
+    private List<TaskResponseDto> tasks = new ArrayList<>();
 
+    /**
+     * Returns the number of tasks in this response.
+     */
     @JsonProperty("total")
     @Schema(description = "Total number of registered tasks", example = "3")
     public int getTotal() {

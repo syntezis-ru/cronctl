@@ -1,11 +1,13 @@
 package ru.syntezis.cronctl.util.condition;
 
 import io.vavr.control.Try;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import lombok.experimental.UtilityClass;
 import org.assertj.core.api.Condition;
 import org.springframework.scheduling.annotation.Scheduled;
-import ru.syntezis.cronctl.domain.*;
+import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
@@ -15,7 +17,7 @@ import java.util.function.Predicate;
 
 import static ru.syntezis.cronctl.util.condition.Limits.*;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
+@UtilityClass
 public class Conditions {
 
     private static final Predicate<Long> fixedRateValidator = fr -> fr >= FIXED_RATE_MIN.getValue() && fr <= FIXED_RATE_MAX.getValue();

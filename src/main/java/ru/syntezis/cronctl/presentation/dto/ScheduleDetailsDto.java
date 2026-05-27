@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.syntezis.cronctl.domain.ScheduleDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 
 import java.util.concurrent.TimeUnit;
 

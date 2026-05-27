@@ -11,7 +11,10 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.scheduling.annotation.Scheduled;
-import ru.syntezis.cronctl.domain.*;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 import ru.syntezis.cronctl.util.Repeats;
 import ru.syntezis.cronctl.util.ScheduleUtils;
@@ -24,7 +27,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static ru.syntezis.cronctl.util.generator.BeanGenerator.randomString;
@@ -47,19 +50,16 @@ class TaskExecutorTest {
         SampleScheduledClass bean = new SampleScheduledClass();
 
         Task task = Task.builder()
-                .method(ScheduledMethod.builder()
-                        .details(ScheduledMethodDetails.builder()
-                                .id(id)
-                                .methodName(method.getName())
-                                .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                                .build()
-                        )
-                        .reference(ScheduledMethodReference.builder()
-                                .beanName("")
-                                .bean(bean)
-                                .method(method)
-                                .build()
-                        )
+                .details(ScheduledMethodDetails.builder()
+                        .id(id)
+                        .methodName(method.getName())
+                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
+                        .build()
+                )
+                .reference(ScheduledMethodReference.builder()
+                        .beanName("")
+                        .bean(bean)
+                        .method(method)
                         .build()
                 )
                 .build();
@@ -106,19 +106,16 @@ class TaskExecutorTest {
         SampleScheduledThrowingClass bean = new SampleScheduledThrowingClass(exceptionMessage, exceptionClass);
 
         Task task = Task.builder()
-                .method(ScheduledMethod.builder()
-                        .details(ScheduledMethodDetails.builder()
-                                .id(id)
-                                .methodName(method.getName())
-                                .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                                .build()
-                        )
-                        .reference(ScheduledMethodReference.builder()
-                                .beanName("")
-                                .bean(bean)
-                                .method(method)
-                                .build()
-                        )
+                .details(ScheduledMethodDetails.builder()
+                        .id(id)
+                        .methodName(method.getName())
+                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
+                        .build()
+                )
+                .reference(ScheduledMethodReference.builder()
+                        .beanName("")
+                        .bean(bean)
+                        .method(method)
                         .build()
                 )
                 .build();
