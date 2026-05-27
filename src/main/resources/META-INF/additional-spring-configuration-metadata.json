@@ -1,40 +1,130 @@
 {
+  "groups": [
+    {
+      "name": "cronctl",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties"
+    },
+    {
+      "name": "cronctl.scan",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$Scan",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getScan()"
+    },
+    {
+      "name": "cronctl.api",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$Api",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getApi()"
+    },
+    {
+      "name": "cronctl.swagger",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$Swagger",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getSwagger()"
+    },
+    {
+      "name": "cronctl.executor",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$Executor",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getExecutor()"
+    }
+  ],
   "properties": [
     {
       "name": "cronctl.enabled",
       "type": "java.lang.Boolean",
       "description": "Enable or disable the entire cronctl library. When false, no beans are registered and no endpoints are exposed.",
-      "defaultValue": true
+      "defaultValue": true,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties"
+    },
+    {
+      "name": "cronctl.scan.type",
+      "type": "ru.syntezis.cronctl.enums.ScanType",
+      "description": "Strategy used to discover @Scheduled methods. AUTO: all methods except @CronctlTask.Exclude. ANNOTATED: only @CronctlTask methods. PACKAGE: only methods in cronctl.scan.base-packages.",
+      "defaultValue": "AUTO",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Scan"
+    },
+    {
+      "name": "cronctl.scan.base-packages",
+      "type": "java.util.List<java.lang.String>",
+      "description": "Packages to scan when cronctl.scan.type is PACKAGE. Subpackages are included automatically.",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Scan"
     },
     {
       "name": "cronctl.api.base-path",
       "type": "java.lang.String",
-      "description": "Base path for the cronctl REST API.",
-      "defaultValue": "/api/cronctl"
+      "description": "Base path for all cronctl REST endpoints.",
+      "defaultValue": "/api/cronctl",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Api"
     },
     {
       "name": "cronctl.api.public-access",
       "type": "java.lang.Boolean",
-      "description": "When true, cronctl API endpoints are accessible without authentication. When false, authentication is required.",
-      "defaultValue": true
+      "description": "When false, authentication is required to access cronctl API endpoints.",
+      "defaultValue": true,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Api"
     },
     {
       "name": "cronctl.swagger.public-access",
       "type": "java.lang.Boolean",
-      "description": "When true, Swagger UI and API docs are accessible without authentication.",
-      "defaultValue": true
+      "description": "When false, authentication is required to access Swagger UI and API docs.",
+      "defaultValue": true,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Swagger"
     },
     {
       "name": "cronctl.swagger.group",
       "type": "java.lang.String",
-      "description": "Name of the cronctl group shown in Swagger UI.",
-      "defaultValue": "cronctl"
+      "description": "Group name displayed in Swagger UI when multiple API groups are present.",
+      "defaultValue": "cronctl",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Swagger"
     },
     {
       "name": "cronctl.swagger.paths-to-match",
       "type": "java.lang.String",
-      "description": "Path pattern used to include endpoints in the cronctl Swagger group.",
-      "defaultValue": "/api/cronctl/**"
+      "description": "Ant-style path pattern used to include endpoints in the cronctl Swagger group.",
+      "defaultValue": "/api/cronctl/**",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Swagger"
+    },
+    {
+      "name": "cronctl.executor.thread-pool-size",
+      "type": "java.lang.Integer",
+      "description": "Number of threads in the async execution pool.",
+      "defaultValue": 4,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Executor"
+    },
+    {
+      "name": "cronctl.executor.queue-capacity",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of tasks that can wait in the submission queue before returning 429.",
+      "defaultValue": 100,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Executor"
+    },
+    {
+      "name": "cronctl.executor.timeout-seconds",
+      "type": "java.lang.Long",
+      "description": "Default execution timeout in seconds. 0 disables the timeout. Can be overridden per task via @CronctlTask(timeout=...).",
+      "defaultValue": 60,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Executor"
+    }
+  ],
+  "hints": [
+    {
+      "name": "cronctl.scan.type",
+      "values": [
+        {
+          "value": "AUTO",
+          "description": "Scan all @Scheduled methods. Methods annotated with @CronctlTask.Exclude are skipped."
+        },
+        {
+          "value": "ANNOTATED",
+          "description": "Scan only @Scheduled methods explicitly annotated with @CronctlTask."
+        },
+        {
+          "value": "PACKAGE",
+          "description": "Scan only @Scheduled methods in packages listed under cronctl.scan.base-packages."
+        }
+      ]
     }
   ]
 }

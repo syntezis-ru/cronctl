@@ -8,3 +8,27 @@ spring:
 schedule:
   cron:
     job-a: 0 */5 * * * *
+
+# ──────────────────────────────────────────────
+# cronctl scan mode examples — uncomment one
+# ──────────────────────────────────────────────
+
+# AUTO (default): all @Scheduled methods are registered.
+# Methods annotated with @CronctlTask.Exclude are skipped.
+cronctl:
+  scan:
+    type: AUTO
+
+# ANNOTATED: only methods explicitly annotated with @CronctlTask are registered.
+# Useful when you want full control over what appears in the API.
+#cronctl:
+#  scan:
+#    type: ANNOTATED
+
+# PACKAGE: only methods whose class lives in one of the listed packages are registered.
+# @CronctlTask.Exclude still works within those packages.
+#cronctl:
+#  scan:
+#    type: PACKAGE
+#    base-packages:
+#      - ru.syntezis.sampleapp.tasks

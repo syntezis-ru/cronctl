@@ -2,8 +2,7 @@ package ru.syntezis.cronctl.core;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import ru.syntezis.cronctl.domain.ScheduledMethod;
-import ru.syntezis.cronctl.domain.Task;
+import ru.syntezis.cronctl.domain.task.Task;
 import ru.syntezis.cronctl.exception.TaskAlreadyExistsInRegistryException;
 
 import java.util.List;
@@ -24,20 +23,20 @@ import static java.lang.String.format;
 @Slf4j
 public class TaskRegistry {
 
-    private final Map<UUID, ScheduledMethod> scheduledMethods = new ConcurrentHashMap<>();
+    private final Map<UUID, Task> tasks = new ConcurrentHashMap<>();
 
     /**
      * Registers a scheduled method under the given UUID.
      *
-     * @param id     unique identifier for the task
-     * @param method scheduled method to register
+     * @param id   unique identifier for the task
+     * @param task scheduled method to register
      * @throws TaskAlreadyExistsInRegistryException if a method with the same {@code id} is already registered
      */
-    public void add(UUID id, ScheduledMethod method) {
-        String methodName = method.getDetails().getMethodName();
+    public void add(UUID id, Task task) {
+        String methodName = task.getDetails().getMethodName();
         log.debug("Adding scheduled method to registry, id = {}, name = {}", id, methodName);
 
-        ScheduledMethod existing = scheduledMethods.putIfAbsent(id, method);
+        Task existing = tasks.putIfAbsent(id, task);
 
         if (existing != null) {
             log.error("Scheduled method with id = {}, name = {} already exists in registry", id, methodName);
@@ -52,10 +51,10 @@ public class TaskRegistry {
     /**
      * Registers multiple scheduled methods. Delegates to {@link #add} for each entry.
      *
-     * @param entries list of (UUID, ScheduledMethod) pairs to register
+     * @param entries list of (UUID, Task) pairs to register
      * @throws TaskAlreadyExistsInRegistryException if any entry's UUID is already registered
      */
-    public void addAll(List<Pair<UUID, ScheduledMethod>> entries) {
+    public void addAll(List<Pair<UUID, Task>> entries) {
         log.debug("Adding {} scheduled methods to registry", entries.size());
         entries.forEach(
                 e -> add(e.getLeft(), e.getRight())
@@ -69,15 +68,39 @@ public class TaskRegistry {
      * @return an {@link Optional} containing the task, or empty if not found
      */
     public Optional<Task> getById(UUID id) {
-        ScheduledMethod method = scheduledMethods.get(id);
-        if (method == null) {
-            log.error("Scheduled method with id = {} not found", id);
+        Task task = tasks.get(id);
+        if (task == null) {
+            log.debug("Scheduled method with id = {} not found", id);
             return Optional.empty();
         }
 
-        log.debug("Scheduled method with id = {}, name = {} has been found by id", id, method.getDetails().getMethodName());
+        log.debug("Scheduled method with id = {}, name = {} has been found by id", id, task.getDetails().getMethodName());
 
-        return Optional.of(new Task(method));
+        return Optional.of(task);
+    }
+
+    /**
+     * Returns all tasks carrying the given tag.
+     *
+     * @param tag tag to filter by
+     * @return tasks that include {@code tag}; empty list if none match
+     */
+    public List<Task> getByTag(String tag) {
+        return tasks.values().stream()
+                .filter(t -> t.getTags().contains(tag))
+                .toList();
+    }
+
+    /**
+     * Returns all tasks belonging to the given group.
+     *
+     * @param group group name to filter by
+     * @return tasks whose group equals {@code group}; empty list if none match
+     */
+    public List<Task> getByGroup(String group) {
+        return tasks.values().stream()
+                .filter(t -> t.getGroup().equals(group))
+                .toList();
     }
 
     /**
@@ -87,7 +110,7 @@ public class TaskRegistry {
      * @return {@code true} if present, {@code false} otherwise
      */
     public boolean contains(UUID id) {
-        return scheduledMethods.containsKey(id);
+        return tasks.containsKey(id);
     }
 
     /**
@@ -96,8 +119,7 @@ public class TaskRegistry {
      * @return list of all tasks; empty if none are registered
      */
     public List<Task> getAll() {
-        return scheduledMethods.values().stream()
-                .map(Task::new)
+        return tasks.values().stream()
                 .toList();
     }
 
@@ -105,6 +127,6 @@ public class TaskRegistry {
      * Removes all registered tasks. Primarily used in tests to reset state between runs.
      */
     public void clear() {
-        scheduledMethods.clear();
+        tasks.clear();
     }
 }

@@ -1,9 +1,9 @@
 package ru.syntezis.cronctl.core;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import ru.syntezis.cronctl.domain.Task;
-import ru.syntezis.cronctl.domain.TaskExecutionDetails;
+import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 import ru.syntezis.cronctl.exception.TaskNotFoundException;
 
 import java.util.List;
@@ -20,11 +20,10 @@ import static java.lang.String.format;
  * at application startup.
  */
 @RequiredArgsConstructor
-@Slf4j
 public class Cronctl {
 
     private final TaskRegistry registry;
-    private final TaskExecutor executor;
+    private final BlockingTaskExecutor executor;
 
     /**
      * Returns all tasks currently registered in the registry.
@@ -33,6 +32,26 @@ public class Cronctl {
      */
     public List<Task> getAllTasks() {
         return registry.getAll();
+    }
+
+    /**
+     * Returns all tasks carrying the given tag.
+     *
+     * @param tag tag to filter by
+     * @return tasks that include {@code tag}; empty list if none match
+     */
+    public List<Task> getByTag(String tag) {
+        return registry.getByTag(tag);
+    }
+
+    /**
+     * Returns all tasks belonging to the given group.
+     *
+     * @param group group name to filter by
+     * @return tasks whose group equals {@code group}; empty list if none match
+     */
+    public List<Task> getByGroup(String group) {
+        return registry.getByGroup(group);
     }
 
     /**
@@ -67,11 +86,7 @@ public class Cronctl {
      */
     public TaskExecutionDetails executeTaskByID(UUID id) {
         Task task = registry.getById(id)
-                .orElseThrow(() -> {
-                            log.error("Task with id = {} not found", id);
-                            return new TaskNotFoundException(format("Task with id = %s not found", id));
-                        }
-                );
+                .orElseThrow(() -> new TaskNotFoundException(format("Task with id = %s not found", id)));
 
         return executor.executeTask(task);
     }

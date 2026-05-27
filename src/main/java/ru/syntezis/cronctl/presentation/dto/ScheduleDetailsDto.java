@@ -1,11 +1,12 @@
 package ru.syntezis.cronctl.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.syntezis.cronctl.domain.ScheduleDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 
 import java.util.concurrent.TimeUnit;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Schedule configuration of a @Scheduled method")
 public class ScheduleDetailsDto {
 
@@ -27,24 +29,24 @@ public class ScheduleDetailsDto {
     private String zone;
 
     @JsonProperty("fixed_rate")
-    @Schema(description = "Fixed rate in milliseconds (-1 if not set)", example = "5000")
-    private long fixedRate;
+    @Schema(description = "Fixed rate; unit is defined by time_unit field", example = "5000")
+    private Long fixedRate;
 
     @JsonProperty("fixed_rate_string")
     @Schema(description = "Fixed rate as a string expression", example = "${my.rate}")
     private String fixedRateString;
 
     @JsonProperty("fixed_delay")
-    @Schema(description = "Fixed delay in milliseconds (-1 if not set)", example = "3000")
-    private long fixedDelay;
+    @Schema(description = "Fixed delay; unit is defined by time_unit field", example = "3000")
+    private Long fixedDelay;
 
     @JsonProperty("fixed_delay_string")
     @Schema(description = "Fixed delay as a string expression", example = "${my.delay}")
     private String fixedDelayString;
 
     @JsonProperty("initial_delay")
-    @Schema(description = "Initial delay in milliseconds (-1 if not set)", example = "1000")
-    private long initialDelay;
+    @Schema(description = "Initial delay; unit is defined by time_unit field", example = "1000")
+    private Long initialDelay;
 
     @JsonProperty("initial_delay_string")
     @Schema(description = "Initial delay as a string expression", example = "${my.initial-delay}")

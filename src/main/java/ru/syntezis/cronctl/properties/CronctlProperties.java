@@ -5,6 +5,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import ru.syntezis.cronctl.enums.ScanType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Configuration properties for cronctl, bound to the {@code cronctl.*} namespace.
@@ -16,17 +20,72 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
  * <p>See {@code config-examples/} in the project root for ready-to-use configuration snippets.
  */
 @Data
-@ConfigurationProperties(prefix = "cronctl", ignoreUnknownFields = false)
+@ConfigurationProperties(prefix = "cronctl")
 public class CronctlProperties {
 
     /** When {@code false}, no cronctl beans are registered and no endpoints are created. */
     private boolean enabled = true;
 
     @NestedConfigurationProperty
+    private Executor executor = new Executor();
+
+    @NestedConfigurationProperty
+    private Scan scan = new Scan();
+
+    @NestedConfigurationProperty
     private Api api = new Api();
 
     @NestedConfigurationProperty
     private Swagger swagger = new Swagger();
+
+    /**
+     * Async executor configuration.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Executor {
+
+        /** Number of threads in the async execution pool. */
+        private int threadPoolSize = 4;
+
+        /** Maximum number of tasks that can wait in the submission queue. */
+        private int queueCapacity = 100;
+
+        /**
+         * Default execution timeout in seconds. {@code 0} disables the timeout.
+         * Can be overridden per task via {@code @CronctlTask(timeout=...)}.
+         */
+        private long timeoutSeconds = 60;
+
+    }
+
+    /**
+     * Scheduled method discovery configuration.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Scan {
+
+        /**
+         * Strategy used to discover {@code @Scheduled} methods.
+         *
+         * <ul>
+         *   <li>{@code AUTO} — all methods, except those annotated with {@code @CronctlTask.Exclude}</li>
+         *   <li>{@code ANNOTATED} — only methods annotated with {@code @CronctlTask}</li>
+         *   <li>{@code PACKAGE} — only methods in packages listed in {@code base-packages}</li>
+         * </ul>
+         */
+        private ScanType type = ScanType.AUTO;
+
+        /**
+         * Packages to scan when {@code type} is {@code PACKAGE}.
+         * Subpackages are included automatically.
+         */
+        private List<String> basePackages = new ArrayList<>();
+
+    }
 
     /**
      * API-related configuration.
@@ -37,7 +96,7 @@ public class CronctlProperties {
     public static class Api {
 
         /** Base path for all cronctl REST endpoints. */
-        private String basePath = "/api/cronctl"; // NOSONAR
+        private String basePath = "/api/cronctl";
 
         /** When {@code false}, authentication is required to access cronctl API endpoints. */
         private boolean publicAccess = true;

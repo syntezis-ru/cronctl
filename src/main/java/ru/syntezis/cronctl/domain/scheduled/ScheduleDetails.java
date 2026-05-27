@@ -1,4 +1,4 @@
-package ru.syntezis.cronctl.domain;
+package ru.syntezis.cronctl.domain.scheduled;
 
 import lombok.Builder;
 import lombok.Data;

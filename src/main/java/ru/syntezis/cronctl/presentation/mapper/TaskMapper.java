@@ -4,7 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;
-import ru.syntezis.cronctl.domain.Task;
+import ru.syntezis.cronctl.domain.task.Task;
 import ru.syntezis.cronctl.presentation.dto.TaskResponseDto;
 
 @Mapper(
@@ -17,9 +17,10 @@ import ru.syntezis.cronctl.presentation.dto.TaskResponseDto;
 )
 public interface TaskMapper {
 
-    @Mapping(target = "details.id", source = "task.method.id")
-    @Mapping(target = "details.methodName", source = "task.method.details.methodName")
-    @Mapping(target = "details.schedule", source = "task.method.details.schedule")
+    @Mapping(target = "details.id", source = "task.id")
+    @Mapping(target = "details.methodName", source = "task.details.methodName")
+    @Mapping(target = "details.schedule", source = "task.details.schedule")
+    @Mapping(target = "timeoutSeconds", source = "task.timeoutSeconds")
     TaskResponseDto toDto(Task task);
 
 }
