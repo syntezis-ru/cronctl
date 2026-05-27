@@ -15,6 +15,12 @@ public enum TaskExecutionStatus {
     SUCCEEDED,
 
     @Schema(description = "Task completed with an exception")
-    FAILED
+    FAILED,
+
+    @Schema(description = "Task was cancelled before completing")
+    CANCELLED,
+
+    @Schema(description = "Task was cancelled because it exceeded the execution timeout")
+    TIMED_OUT
 
 }

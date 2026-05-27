@@ -28,7 +28,7 @@ class CronctlApiSecuredAccessTest {
 
     @Test
     void executeTask_SecuredAccess_NoAuth_Returns403() throws Exception {
-        mockMvc.perform(post("/api/cronctl/execute/{id}", UUID.randomUUID()))
+        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
                 .andExpect(status().isForbidden());
     }
 
@@ -42,7 +42,7 @@ class CronctlApiSecuredAccessTest {
     @Test
     @WithMockUser
     void executeTask_SecuredAccess_WithAuth_UnknownId_Returns404() throws Exception {
-        mockMvc.perform(post("/api/cronctl/execute/{id}", UUID.randomUUID()))
+        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
                 .andExpect(status().isNotFound());
     }
 }

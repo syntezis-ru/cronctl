@@ -70,7 +70,7 @@ public class TaskRegistry {
     public Optional<Task> getById(UUID id) {
         Task task = tasks.get(id);
         if (task == null) {
-            log.error("Scheduled method with id = {} not found", id);
+            log.debug("Scheduled method with id = {} not found", id);
             return Optional.empty();
         }
 

@@ -1,4 +1,4 @@
-package ru.syntezis.cronctl.core;
+package ru.syntezis.cronctl.core.sync;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
@@ -18,7 +18,7 @@ import java.util.UUID;
  * and wraps any exception into {@link TaskExecutionDetails.FailDetails} without rethrowing.
  */
 @Slf4j
-public class TaskExecutor {
+public class BlockingTaskExecutor {
 
     /**
      * Invokes the {@code @Scheduled} method referenced by the given task.

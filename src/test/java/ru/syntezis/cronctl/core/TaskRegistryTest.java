@@ -172,6 +172,74 @@ class TaskRegistryTest {
     }
 
     @Test
+    void getByTag_MatchingTasks_ReturnsOnlyMatchingTasks() {
+        // Given
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        UUID id3 = UUID.randomUUID();
+        Task taggedA = buildTask(id1, "method1", List.of("alpha"));
+        Task taggedB = buildTask(id2, "method2", List.of("alpha", "beta"));
+        Task other   = buildTask(id3, "method3", List.of("gamma"));
+        underTest.add(id1, taggedA);
+        underTest.add(id2, taggedB);
+        underTest.add(id3, other);
+
+        // When
+        final List<Task> actual = underTest.getByTag("alpha");
+
+        // Then
+        assertThat(actual)
+                .containsExactlyInAnyOrder(taggedA, taggedB);
+    }
+
+    @Test
+    void getByTag_NoMatchingTasks_ReturnsEmptyList() {
+        // Given
+        UUID id = UUID.randomUUID();
+        underTest.add(id, buildTask(id, "method1", List.of("only")));
+
+        // When
+        final List<Task> actual = underTest.getByTag("nonexistent");
+
+        // Then
+        assertThat(actual).isEmpty();
+    }
+
+    @Test
+    void getByGroup_MatchingTasks_ReturnsOnlyMatchingGroup() {
+        // Given
+        UUID id1 = UUID.randomUUID();
+        UUID id2 = UUID.randomUUID();
+        UUID id3 = UUID.randomUUID();
+        Task inGroup    = buildTaskWithGroup(id1, "method1", "billing");
+        Task alsoIn     = buildTaskWithGroup(id2, "method2", "billing");
+        Task otherGroup = buildTaskWithGroup(id3, "method3", "reports");
+        underTest.add(id1, inGroup);
+        underTest.add(id2, alsoIn);
+        underTest.add(id3, otherGroup);
+
+        // When
+        final List<Task> actual = underTest.getByGroup("billing");
+
+        // Then
+        assertThat(actual)
+                .containsExactlyInAnyOrder(inGroup, alsoIn);
+    }
+
+    @Test
+    void getByGroup_NoMatchingTasks_ReturnsEmptyList() {
+        // Given
+        UUID id = UUID.randomUUID();
+        underTest.add(id, buildTaskWithGroup(id, "method1", "someGroup"));
+
+        // When
+        final List<Task> actual = underTest.getByGroup("nonexistent");
+
+        // Then
+        assertThat(actual).isEmpty();
+    }
+
+    @Test
     void clear_TasksPresent_RegistryEmptied() {
         // Given
         UUID id = UUID.randomUUID();
@@ -188,10 +256,28 @@ class TaskRegistryTest {
     }
 
     private Task buildTask(UUID id, String methodName) {
+        return buildTask(id, methodName, List.of());
+    }
+
+    private Task buildTask(UUID id, String methodName, List<String> tags) {
         return Task.builder()
                 .label(methodName)
                 .description("description")
                 .group("default")
+                .tags(tags)
+                .details(ScheduledMethodDetails.builder()
+                        .id(id)
+                        .methodName(methodName)
+                        .build()
+                )
+                .build();
+    }
+
+    private Task buildTaskWithGroup(UUID id, String methodName, String group) {
+        return Task.builder()
+                .label(methodName)
+                .description("description")
+                .group(group)
                 .tags(List.of())
                 .details(ScheduledMethodDetails.builder()
                         .id(id)

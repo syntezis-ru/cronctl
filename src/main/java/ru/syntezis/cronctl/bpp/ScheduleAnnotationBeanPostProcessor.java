@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.EmbeddedValueResolverAware;
@@ -44,8 +45,9 @@ public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, E
     public @Nullable Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         log.debug("Processing bean with name: {}", beanName);
 
+        Class<?> targetClass = AopUtils.getTargetClass(bean);
         List<Method> methods = methodsFilter.filter(
-                List.of(bean.getClass().getDeclaredMethods()),
+                List.of(targetClass.getDeclaredMethods()),
                 scanModeFilter.predicate()
         );
 

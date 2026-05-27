@@ -20,6 +20,7 @@ public interface TaskMapper {
     @Mapping(target = "details.id", source = "task.id")
     @Mapping(target = "details.methodName", source = "task.details.methodName")
     @Mapping(target = "details.schedule", source = "task.details.schedule")
+    @Mapping(target = "timeoutSeconds", source = "task.timeoutSeconds")
     TaskResponseDto toDto(Task task);
 
 }

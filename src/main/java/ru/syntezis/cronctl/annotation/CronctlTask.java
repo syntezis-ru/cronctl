@@ -3,6 +3,7 @@ package ru.syntezis.cronctl.annotation;
 import org.springframework.core.annotation.AliasFor;
 
 import java.lang.annotation.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Marks a {@code @Scheduled} method for registration in the cronctl REST API.
@@ -34,6 +35,15 @@ public @interface CronctlTask {
 
     /** Arbitrary tags for filtering or categorisation. */
     String[] tags() default {};
+
+    /**
+     * Task-level execution timeout. {@code 0} means use the global
+     * {@code cronctl.executor.timeout-seconds} setting.
+     */
+    long timeout() default 0;
+
+    /** Time unit for {@link #timeout()}. */
+    TimeUnit timeUnit() default TimeUnit.SECONDS;
 
     /**
      * Prevents the annotated {@code @Scheduled} method from being registered in cronctl.
