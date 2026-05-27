@@ -1,5 +1,6 @@
 package ru.syntezis.cronctl.presentation.mapper;
 
+import org.jspecify.annotations.Nullable;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -21,11 +22,11 @@ public interface ScheduleDetailsMapper {
     @Mapping(target = "scheduler",          expression = "java(emptyToNull(s.getScheduler()))")
     ScheduleDetailsDto toDto(ScheduleDetails s);
 
-    default String emptyToNull(String value) {
-        return (value == null || value.isEmpty()) ? null : value;
+    default @Nullable String emptyToNull(String value) {
+        return value.isEmpty() ? null : value;
     }
 
-    default Long negOneToNull(long value) {
+    default @Nullable Long negOneToNull(long value) {
         return value == -1L ? null : value;
     }
 

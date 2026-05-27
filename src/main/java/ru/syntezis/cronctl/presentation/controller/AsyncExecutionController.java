@@ -1,6 +1,7 @@
 package ru.syntezis.cronctl.presentation.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import ru.syntezis.cronctl.core.Cronctl;
@@ -36,7 +37,7 @@ public class AsyncExecutionController implements AsyncExecutionAPI {
     private final TaskExecutionMapper taskExecutionMapper;
 
     @Override
-    public ResponseEntity<ExecutionsListDto> listExecutions(TaskExecutionStatus status) {
+    public ResponseEntity<ExecutionsListDto> listExecutions(@Nullable TaskExecutionStatus status) {
         Collection<TaskExecution> executions = status != null
                 ? executionRegistry.getByStatus(status)
                 : executionRegistry.getAll();

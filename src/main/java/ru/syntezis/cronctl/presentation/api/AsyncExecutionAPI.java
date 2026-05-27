@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +34,7 @@ public interface AsyncExecutionAPI {
                     schema = @Schema(implementation = ExecutionsListDto.class)))
     ResponseEntity<ExecutionsListDto> listExecutions(
             @Parameter(description = "Filter by execution status; omit to return all")
-            @RequestParam(name = "status", required = false) TaskExecutionStatus status);
+            @RequestParam(name = "status", required = false) @Nullable TaskExecutionStatus status);
 
     @PostMapping("/tasks/{taskId}/executions")
     @Operation(
