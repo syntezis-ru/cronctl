@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 
 import java.util.UUID;
 

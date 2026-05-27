@@ -10,11 +10,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.syntezis.cronctl.core.TaskRegistry;
-import ru.syntezis.cronctl.domain.ScheduledMethod;
-import ru.syntezis.cronctl.domain.ScheduledMethodDetails;
-import ru.syntezis.cronctl.domain.Task;
-import ru.syntezis.cronctl.filter.ScheduledMethodsFilter;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.filter.MethodsFilter;
+import ru.syntezis.cronctl.filter.ScanModeFilter;
 import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
+import ru.syntezis.cronctl.properties.CronctlProperties;
 import ru.syntezis.cronctl.util.condition.Conditions;
 import ru.syntezis.cronctl.util.generator.BeanCreationRequest;
 import ru.syntezis.cronctl.util.generator.BeanGenerator;
@@ -32,7 +33,8 @@ class ScheduleAnnotationBeanPostProcessorTest {
     private static final BeanGenerator generator = new BeanGenerator();
 
     private TaskRegistry registry;
-    private ScheduledMethodsFilter filter;
+    private MethodsFilter methodsFilter;
+    private ScanModeFilter scanModeFilter;
     private ScheduledBeanProcessor processor;
 
     private ScheduleAnnotationBeanPostProcessor underTest;
@@ -40,9 +42,10 @@ class ScheduleAnnotationBeanPostProcessorTest {
     @BeforeAll
     void init() {
         registry = new TaskRegistry();
-        filter = new ScheduledMethodsFilter();
+        methodsFilter = new MethodsFilter();
+        scanModeFilter = new ScanModeFilter(new CronctlProperties.Scan());
         processor = new ScheduledBeanProcessor();
-        underTest = new ScheduleAnnotationBeanPostProcessor(registry, filter, processor);
+        underTest = new ScheduleAnnotationBeanPostProcessor(registry, methodsFilter, scanModeFilter, processor);
     }
 
     @Test
@@ -62,8 +65,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
 
         assertThat(task)
                 .hasNoNullFieldsOrProperties()
-                .extracting(Task::getMethod)
-                .extracting(ScheduledMethod::getDetails)
+                .extracting(Task::getDetails)
                 .hasFieldOrPropertyWithValue("methodName", "doSomething")
                 .extracting(ScheduledMethodDetails::getSchedule)
                 .hasNoNullFieldsOrProperties()
@@ -71,8 +73,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
 
         assertThat(task)
                 .hasNoNullFieldsOrProperties()
-                .extracting(Task::getMethod)
-                .extracting(ScheduledMethod::getReference)
+                .extracting(Task::getReference)
                 .hasFieldOrPropertyWithValue("method", bean.getClass().getDeclaredMethod("doSomething"))
                 .hasFieldOrPropertyWithValue("bean", bean);
     }
@@ -95,8 +96,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
                 .hasSize(scheduledMethodsCount);
 
         assertThat(tasks)
-                .extracting(Task::getMethod)
-                .extracting(ScheduledMethod::getDetails)
+                .extracting(Task::getDetails)
                 .allSatisfy(d ->
                         assertThat(d)
                                 .hasNoNullFieldsOrProperties()
@@ -107,8 +107,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
                 );
 
         assertThat(tasks)
-                .extracting(Task::getMethod)
-                .extracting(ScheduledMethod::getReference)
+                .extracting(Task::getReference)
                 .allSatisfy(r ->
                         assertThat(r)
                                 .hasNoNullFieldsOrProperties()

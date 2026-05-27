@@ -3,13 +3,18 @@
   <h1>cronctl-spring-boot-starter</h1>
 </div>
 
-[![CI](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
-[![Qodana](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/ru.syntezis/cronctl-spring-boot-starter)](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter)
+[![Javadoc](https://javadoc.io/badge2/ru.syntezis/cronctl-spring-boot-starter/javadoc.svg)](https://javadoc.io/doc/ru.syntezis/cronctl-spring-boot-starter)
 [![GitHub Release](https://img.shields.io/github/v/release/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/releases/latest)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
 [![Java](https://img.shields.io/badge/java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/spring--boot-3.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
+
+[![CI](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
+[![Qodana](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml)
+[![codecov](https://codecov.io/gh/syntezis-ru/cronctl/branch/master/graph/badge.svg)](https://codecov.io/gh/syntezis-ru/cronctl)
+[![Last Update](https://img.shields.io/maven-central/last-update/ru.syntezis/cronctl-spring-boot-starter)](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter)
 [![Last Commit](https://img.shields.io/github/last-commit/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/commits/master)
 
 A Spring Boot starter that exposes a REST API for viewing and manually triggering
@@ -70,6 +75,12 @@ public class MyApplication {
 @Component
 public class MyScheduler {
 
+    @CronctlTask(
+            label = "Sync Data",
+            description = "Pulls updates from the remote source",
+            group = "integration",
+            tags = {"sync", "critical"}
+    )
     @Scheduled(fixedRate = 60_000)
     public void syncData() {
         // ...
@@ -77,12 +88,62 @@ public class MyScheduler {
 
     @Scheduled(cron = "0 0 3 * * *")
     public void generateReport() {
-        // ...
+        // registered automatically with defaults: label = "generateReport"
+    }
+
+    @CronctlTask.Exclude
+    @Scheduled(fixedRate = 60_000)
+    public void internalJob() {
+        // never appears in the API
     }
 }
 ```
 
 After startup, all `@Scheduled` methods are registered automatically.
+
+## @CronctlTask Annotation
+
+`@CronctlTask` is optional. Without it, cronctl registers the method with sensible defaults.
+Use it to enrich the API response with human-readable metadata.
+
+| Attribute     | Default                | Description                            |
+|---------------|------------------------|----------------------------------------|
+| `label`       | method name            | Display name shown in the API response |
+| `description` | `ClassName.methodName` | Human-readable description             |
+| `group`       | `"default"`            | Logical group for categorisation       |
+| `tags`        | `[]`                   | Arbitrary tags for filtering           |
+
+Use `@CronctlTask.Exclude` to prevent a method from appearing in the API at all.
+This annotation is respected in `AUTO` and `PACKAGE` scan modes.
+
+## Scan Modes
+
+Control which `@Scheduled` methods are registered via `cronctl.scan.type`:
+
+| Mode        | Behaviour                                                                                  |
+|-------------|--------------------------------------------------------------------------------------------|
+| `AUTO`      | All `@Scheduled` methods, except those annotated with `@CronctlTask.Exclude` **(default)** |
+| `ANNOTATED` | Only methods explicitly annotated with `@CronctlTask`                                      |
+| `PACKAGE`   | All `@Scheduled` methods in the specified packages, except `@Exclude`                      |
+
+**ANNOTATED mode** — only opt-in methods are registered:
+
+```yaml
+cronctl:
+  scan:
+    type: ANNOTATED
+```
+
+**PACKAGE mode** — register only methods in given packages:
+
+```yaml
+cronctl:
+  scan:
+    type: PACKAGE
+    base-packages:
+      - ru.example.billing
+      - ru.example.reporting
+```
 
 ## API
 
@@ -90,16 +151,39 @@ Base path: `/api/cronctl` (configurable via `cronctl.api.base-path`)
 
 ### GET /api/cronctl/tasks
 
-Returns all registered `@Scheduled` tasks.
+Returns registered `@Scheduled` tasks. Supports optional filtering by `group` and `tag`.
+When both parameters are provided, only tasks matching **both** conditions are returned.
+
+| Parameter | Type   | Required | Description                        |
+|-----------|--------|----------|------------------------------------|
+| `group`   | string | no       | Return only tasks in this group    |
+| `tag`     | string | no       | Return only tasks carrying this tag |
 
 ```bash
+# All tasks
 curl http://localhost:8080/api/cronctl/tasks
+
+# Filter by group
+curl http://localhost:8080/api/cronctl/tasks?group=integration
+
+# Filter by tag
+curl http://localhost:8080/api/cronctl/tasks?tag=critical
+
+# Filter by both (AND)
+curl "http://localhost:8080/api/cronctl/tasks?group=integration&tag=critical"
 ```
 
 ```json
 {
   "tasks": [
     {
+      "label": "Sync Data",
+      "description": "Pulls updates from the remote source",
+      "group": "integration",
+      "tags": [
+        "sync",
+        "critical"
+      ],
       "details": {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "method_name": "syncData",
@@ -135,6 +219,38 @@ curl -X POST http://localhost:8080/api/cronctl/execute/3fa85f64-5717-4562-b3fc-2
 
 If the task throws an exception, `status` is `FAILED` and `fail_details.message` contains the error message.
 
+## Programmatic Configuration
+
+As an alternative to `application.yml`, you can configure cronctl by declaring a
+`CronctlConfiguration` bean. Only fields explicitly set on the builder take effect —
+everything else continues to be resolved from `application.yml` and cronctl's built-in defaults.
+
+```java
+@Bean
+public CronctlConfiguration cronctlConfiguration() {
+    return CronctlConfiguration.builder()
+            .basePath("/internal/scheduler")
+            .scanType(ScanType.ANNOTATED)
+            .apiPublicAccess(false)
+            .build();
+}
+```
+
+All builder fields map directly to their `application.yml` counterparts:
+
+| Builder field          | Equivalent property                  |
+|------------------------|--------------------------------------|
+| `basePath`             | `cronctl.api.base-path`              |
+| `apiPublicAccess`      | `cronctl.api.public-access`          |
+| `swaggerPublicAccess`  | `cronctl.swagger.public-access`      |
+| `swaggerGroup`         | `cronctl.swagger.group`              |
+| `swaggerPathsToMatch`  | `cronctl.swagger.paths-to-match`     |
+| `scanType`             | `cronctl.scan.type`                  |
+| `scanBasePackages`     | `cronctl.scan.base-packages`         |
+
+> **Priority**: the programmatic bean takes precedence over `application.yml`, which takes
+> precedence over cronctl's built-in defaults.
+
 ## Configuration
 
 All properties are optional. The defaults work out of the box.
@@ -147,6 +263,8 @@ All properties are optional. The defaults work out of the box.
 | `cronctl.swagger.public-access`  | `true`            | When `false`, authentication is required to access Swagger UI                              |
 | `cronctl.swagger.group`          | `cronctl`         | Group name shown in Swagger UI                                                             |
 | `cronctl.swagger.paths-to-match` | `/api/cronctl/**` | Path pattern used to include endpoints in the cronctl Swagger group                        |
+| `cronctl.scan.type`              | `AUTO`            | Scan mode: `AUTO`, `ANNOTATED`, or `PACKAGE` (see [Scan Modes](#scan-modes))               |
+| `cronctl.scan.base-packages`     | `[]`              | Packages to scan in `PACKAGE` mode                                                         |
 
 See [`docs/config-examples/`](docs/config-examples/) for ready-to-use configuration files covering
 common scenarios: custom paths, secured API, production setup, and more.

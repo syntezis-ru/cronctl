@@ -3,6 +3,7 @@ package ru.syntezis.cronctl.core;
 import io.vavr.control.Try;
 import org.apache.commons.lang3.tuple.Pair;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jeasy.random.EasyRandom;
 import org.jeasy.random.EasyRandomParameters;
 import org.junit.jupiter.api.AfterEach;
@@ -14,8 +15,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
-import ru.syntezis.cronctl.domain.*;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
+import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
+import ru.syntezis.cronctl.exception.TaskNotFoundException;
 import ru.syntezis.cronctl.util.Repeats;
 import ru.syntezis.cronctl.util.ScheduleUtils;
 import ru.syntezis.cronctl.util.condition.Conditions;
@@ -26,6 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,17 +58,15 @@ class CronctlTest {
     @ValueSource(ints = {0, 1, 2, 3, 10, 100, 999})
     void getAllTasks_ThreeTasksInRegistry_ListReturned(int tasksCount) {
         // Given
-        List<Pair<UUID, ScheduledMethod>> methods = Repeats.supplierRepeat(tasksCount, () -> {
+        List<Pair<UUID, Task>> tasks = Repeats.supplierRepeat(tasksCount, () -> {
             UUID id = UUID.randomUUID();
-            ScheduledMethod method = random.nextObject(ScheduledMethod.class);
+            Task method = random.nextObject(Task.class);
             return Pair.of(id, method);
         });
 
-        registry.addAll(methods);
+        registry.addAll(tasks);
 
-        final List<Task> expected = methods.stream()
-                .map(p -> new Task(p.getRight()))
-                .toList();
+        final List<Task> expected = registry.getAll();
 
         // When
         final List<Task> actual = underTest.getAllTasks();
@@ -89,7 +93,7 @@ class CronctlTest {
     void taskExists_taskExistsInRegistry_ReturnTrue() {
         // Given
         UUID scheduledMethodId = UUID.randomUUID();
-        registry.add(scheduledMethodId, random.nextObject(ScheduledMethod.class));
+        registry.add(scheduledMethodId, random.nextObject(Task.class));
 
         // When
         final boolean actual = underTest.taskExists(scheduledMethodId);
@@ -116,10 +120,10 @@ class CronctlTest {
     void getById_taskExistsInRegistry_ReturnFilledOptional() {
         // Given
         UUID scheduledMethodId = UUID.randomUUID();
-        final Task expected = new Task(random.nextObject(ScheduledMethod.class));
-        expected.getMethod().getDetails().setId(scheduledMethodId);
+        final Task expected = random.nextObject(Task.class);
+        expected.getDetails().setId(scheduledMethodId);
 
-        registry.add(scheduledMethodId, expected.getMethod());
+        registry.add(scheduledMethodId, expected);
 
         // When
         final Optional<Task> actual = underTest.getById(scheduledMethodId);
@@ -148,10 +152,10 @@ class CronctlTest {
     void executeTaskByID_taskExecutedSuccessfully_TaskExecutedAndReturnedExecutionDetails() {
         // Given
         UUID scheduledMethodId = UUID.randomUUID();
-        Task task = new Task(random.nextObject(ScheduledMethod.class));
-        task.getMethod().getDetails().setId(scheduledMethodId);
+        Task task = random.nextObject(Task.class);
+        task.getDetails().setId(scheduledMethodId);
 
-        registry.add(scheduledMethodId, task.getMethod());
+        registry.add(scheduledMethodId, task);
 
         // When
         final TaskExecutionDetails actual = underTest.executeTaskByID(scheduledMethodId);
@@ -173,24 +177,21 @@ class CronctlTest {
         SampleScheduledThrowingClass bean = new SampleScheduledThrowingClass();
         Method method = SampleScheduledThrowingClass.class.getDeclaredMethod("throwingJob");
         Task task = Task.builder()
-                .method(ScheduledMethod.builder()
-                        .details(ScheduledMethodDetails.builder()
-                                .id(scheduledMethodId)
-                                .methodName("throwingJob")
-                                .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                                .build()
-                        )
-                        .reference(ScheduledMethodReference.builder()
-                                .beanName("")
-                                .bean(bean)
-                                .method(method)
-                                .build()
-                        )
+                .details(ScheduledMethodDetails.builder()
+                        .id(scheduledMethodId)
+                        .methodName("throwingJob")
+                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
+                        .build()
+                )
+                .reference(ScheduledMethodReference.builder()
+                        .beanName("")
+                        .bean(bean)
+                        .method(method)
                         .build()
                 )
                 .build();
 
-        registry.add(scheduledMethodId, task.getMethod());
+        registry.add(scheduledMethodId, task);
 
         // When
         final TaskExecutionDetails actual = underTest.executeTaskByID(scheduledMethodId);
@@ -210,6 +211,20 @@ class CronctlTest {
                 .asInstanceOf(InstanceOfAssertFactories.THROWABLE)
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("Error");
+    }
+
+    @Test
+    void executeTaskByID_TaskNotFound_ThrowsTaskNotFoundException() {
+        // Given
+        registry.clear();
+        UUID id = UUID.randomUUID();
+
+        // When
+        ThrowingCallable invoke = () -> underTest.executeTaskByID(id);
+
+        // Then
+        assertThatThrownBy(invoke)
+                .isInstanceOf(TaskNotFoundException.class);
     }
 
     @AfterEach

@@ -6,11 +6,20 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.context.annotation.Bean;
 import ru.syntezis.cronctl.properties.CronctlProperties;
 
+/**
+ * Registers a springdoc {@link GroupedOpenApi} group for the cronctl controller,
+ * using paths and group name configured in {@link CronctlProperties.Swagger}.
+ *
+ * <p>Active only when springdoc is on the classpath.
+ */
 @RequiredArgsConstructor
 public class CronctlSwaggerConfiguration {
 
     private final CronctlProperties properties;
 
+    /**
+     * Exposes the cronctl controller paths under a named OpenAPI group.
+     */
     @Bean
     @ConditionalOnClass(name = "org.springdoc.core.models.GroupedOpenApi")
     public GroupedOpenApi cronctlApi() {
