@@ -48,7 +48,7 @@ No additional repository configuration is required.
 **Gradle:**
 
 ```groovy
-implementation 'ru.syntezis:cronctl-spring-boot-starter:0.0.1'
+implementation 'ru.syntezis:cronctl-spring-boot-starter:0.0.2'
 ```
 
 No additional configuration is required. cronctl registers itself via Spring Boot
