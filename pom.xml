@@ -85,7 +85,7 @@
 
         <!-- Dependency management versions -->
         <commons-lang3.version>3.20.0</commons-lang3.version>
-        <classgraph.version>4.8.112</classgraph.version>
+        <classgraph.version>4.8.184</classgraph.version>
         <objenesis.version>3.5</objenesis.version>
 
         <!-- Plugin versions -->
