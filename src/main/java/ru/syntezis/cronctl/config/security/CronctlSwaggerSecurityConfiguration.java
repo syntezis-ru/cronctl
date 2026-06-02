@@ -12,7 +12,7 @@ import ru.syntezis.cronctl.properties.CronctlProperties;
  * Configures Spring Security for the Swagger UI and OpenAPI spec endpoints.
  *
  * <p>The access policy is determined at bean instantiation time from
- * {@link CronctlProperties.Swagger#isPublicAccess()}:
+ * {@link CronctlProperties.Swagger} ({@code cronctl.swagger.public-access}):
  * <ul>
  *   <li>{@code true} (default) — Swagger UI is publicly accessible</li>
  *   <li>{@code false} — Swagger UI requires authentication</li>
@@ -27,6 +27,10 @@ public class CronctlSwaggerSecurityConfiguration {
      * Registers a security filter chain for Swagger UI and {@code /v3/api-docs/**}.
      * Permits all requests when {@code cronctl.swagger.public-access=true}; requires
      * authentication otherwise.
+     *
+     * @param http the {@link HttpSecurity} to configure
+     * @return the configured {@link SecurityFilterChain}
+     * @throws Exception if the security configuration fails
      */
     @Bean(name = "cronctlSwaggerSecurityFilterChain")
     @Order(SecurityProperties.BASIC_AUTH_ORDER - 1)

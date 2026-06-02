@@ -5,6 +5,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringValueResolver;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -148,6 +149,114 @@ class ScheduleUtilsTest {
                 .isEqualTo("Europe/Moscow");
         assertThat(actual.getCron())
                 .isEqualTo("0 0 12 * * *");
+    }
+
+    // ── computeNextExecutionAt ────────────────────────────────────────────────
+
+    @Test
+    void computeNextExecutionAt_ValidCronSchedule_ReturnsInstantInFuture() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("0 * * * * *")
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual)
+                .isNotNull()
+                .isAfter(Instant.now());
+    }
+
+    @Test
+    void computeNextExecutionAt_ValidCronScheduleWithZone_ReturnsInstantInFuture() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("0 0 12 * * *")
+                .zone("Europe/Moscow")
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual)
+                .isNotNull()
+                .isAfter(Instant.now());
+    }
+
+    @Test
+    void computeNextExecutionAt_NullCron_ReturnsNull() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .fixedRate(5000L)
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    void computeNextExecutionAt_EmptyCron_ReturnsNull() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("")
+                .fixedRate(5000L)
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    void computeNextExecutionAt_InvalidCronExpression_ReturnsNull() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("not-a-cron")
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    void computeNextExecutionAt_FixedRateSchedule_ReturnsNull() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("")
+                .fixedRate(5000L)
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual).isNull();
+    }
+
+    @Test
+    void computeNextExecutionAt_FixedDelaySchedule_ReturnsNull() {
+        // Given
+        final ScheduleDetails schedule = ScheduleDetails.builder()
+                .cron("")
+                .fixedDelay(3000L)
+                .build();
+
+        // When
+        final Instant actual = ScheduleUtils.computeNextExecutionAt(schedule);
+
+        // Then
+        assertThat(actual).isNull();
     }
 
     private static class SampleScheduledClass {

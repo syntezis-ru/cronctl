@@ -1,3 +1,6 @@
+/**
+ * REST API interface definitions.
+ */
 @NullMarked
 package ru.syntezis.cronctl.presentation.api;
 

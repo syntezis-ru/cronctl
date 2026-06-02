@@ -10,6 +10,7 @@ import ru.syntezis.cronctl.properties.CronctlProperties;
 
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Submits registered tasks for asynchronous execution on a bounded thread pool.
@@ -34,6 +35,13 @@ public class AsyncTaskExecutor {
     private final ThreadPoolExecutor threadPool;
     private final ScheduledExecutorService timeoutScheduler;
 
+    /**
+     * Creates an executor with a bounded thread pool and a dedicated timeout scheduler.
+     *
+     * @param syncExecutor       executor used to run the task body on the worker thread
+     * @param executionRegistry  registry where execution state is tracked
+     * @param executorProperties thread-pool and timeout configuration
+     */
     public AsyncTaskExecutor(BlockingTaskExecutor syncExecutor,
                              ExecutionRegistry executionRegistry,
                              CronctlProperties.Executor executorProperties) {
@@ -45,11 +53,11 @@ public class AsyncTaskExecutor {
                 executorProperties.getThreadPoolSize(),
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(executorProperties.getQueueCapacity()),
-                Thread.ofPlatform().name("cronctl-executor-", 0).daemon(true).factory(),
+                daemonFactory("cronctl-executor-"),
                 new ThreadPoolExecutor.AbortPolicy()
         );
         this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(
-                Thread.ofPlatform().name("cronctl-timeout").daemon(true).factory()
+                daemonFactory("cronctl-timeout")
         );
     }
 
@@ -111,6 +119,16 @@ public class AsyncTaskExecutor {
         }, timeoutSeconds, TimeUnit.SECONDS);
     }
 
+    private static ThreadFactory daemonFactory(String namePrefix) {
+        AtomicLong counter = new AtomicLong();
+        return r -> {
+            Thread thread = new Thread(r, namePrefix + counter.getAndIncrement());
+            thread.setDaemon(true);
+            return thread;
+        };
+    }
+
+    /** Shuts down the thread pool and timeout scheduler, invoked automatically on application context close. */
     @PreDestroy
     public void shutdown() {
         log.info("Shutting down AsyncTaskExecutor");

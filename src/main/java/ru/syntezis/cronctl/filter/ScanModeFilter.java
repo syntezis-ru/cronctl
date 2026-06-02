@@ -26,6 +26,8 @@ public class ScanModeFilter {
     private final CronctlProperties.Scan scanProperties;
 
     /**
+     * Returns the predicate implementing the active scan-mode rules.
+     *
      * @return predicate that implements the active scan-mode rules
      */
     public Predicate<Method> predicate() {

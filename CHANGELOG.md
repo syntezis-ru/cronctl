@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.3] — 2026-06-02
+
+### Added
+
+- **Next execution time** — every task in the API now includes a `next_execution_at` field (ISO-8601 UTC instant):
+    - `GET /api/cronctl/tasks` — each task object now contains `next_execution_at`
+    - `GET /api/cronctl/tasks/{id}/next-execution` — returns the next execution time for a single task by ID
+- `next_execution_at` is resolved via Spring's `ScheduledTaskHolder` for all schedule types
+  (cron, fixedRate, fixedDelay). When `ScheduledTaskHolder` is unavailable, cron tasks fall back
+  to `CronExpression` arithmetic. For fixedRate / fixedDelay tasks without a live future the field is `null`.
+
+### Changed
+
+- Bytecode target lowered from Java 21 to Java 17; cronctl now works in any Java 17+ application.
+  The library continues to be built with JDK 21 — no language features or APIs are affected.
+
+---
+
+## [0.0.2] — 2026-05-28
+
+### Added
+
+- **Async Execution API** — submit tasks without blocking the caller; track and cancel executions by ID:
+    - `POST /api/cronctl/tasks/{taskId}/executions` — enqueue a task, returns `202` with `execution_id`
+    - `GET /api/cronctl/executions/{executionId}` — poll current state (`PENDING → RUNNING → SUCCEEDED | FAILED | CANCELLED`)
+    - `DELETE /api/cronctl/executions/{executionId}` — request cancellation (`204`); returns `409` if already terminal
+    - `GET /api/cronctl/executions?status=` — list all tracked executions, optionally filtered by status
+- **`@CronctlTask` annotation** — optionally enrich a `@Scheduled` method with human-readable metadata
+  (`label`, `description`, `group`, `tags`) and a per-task execution timeout (`timeout`, `timeUnit`)
+- **`@CronctlTask.Exclude`** — prevents a method from appearing in the API; respected in `AUTO` and `PACKAGE` modes
+- **Scan modes** (`cronctl.scan.type`):
+    - `AUTO` (default) — all `@Scheduled` methods except `@CronctlTask.Exclude`
+    - `ANNOTATED` — only methods explicitly annotated with `@CronctlTask`
+    - `PACKAGE` — all `@Scheduled` methods in `cronctl.scan.base-packages`, except `@Exclude`
+- **Programmatic configuration** via `CronctlConfiguration` bean — an alternative to `application.yml`;
+  builder fields take precedence over properties and cronctl's built-in defaults
+- **Task filtering** — `GET /api/cronctl/tasks` now accepts `?group=` and `?tag=` query parameters (combinable with AND)
+
+### Changed
+
+- `POST /api/cronctl/execute/{id}` renamed to `POST /api/cronctl/tasks/{id}/execute`
+- `ScheduleDetailsDto` — unset `@Scheduled` fields (numeric `-1` and empty strings) are now omitted from the JSON response
+- `TaskResponseDto` — added `timeout_seconds` field reflecting the task-level timeout override
+
+### Fixed
+
+- `ScheduleAnnotationBeanPostProcessor` now resolves annotations from the target class via `AopUtils.getTargetClass`,
+  ensuring correct discovery when beans are wrapped by CGLIB or JDK proxies (e.g. when `@Transactional` is present)
+- Race condition in `AsyncTaskExecutor` where a cancellation request arriving in the narrow window between
+  `threadPool.submit()` and `execution.setFuture()` was silently dropped; the interrupt is now delivered after `setFuture`
+- GitHub Actions workflow versions corrected: `actions/checkout@v6→v4`, `actions/upload-artifact@v7→v4`
+- Four `@NullMarked` violations flagged by Qodana (constant null-check in `ScheduleDetailsMapper`,
+  unannotated nullable return types, missing `@Nullable` on optional `?status` request parameter)
+- `sample-app`: `commons-lang3` updated 3.18.0 → 3.20.0 (CVE-2025-48924)
+
+### Configuration
+
+New properties introduced in this release:
+
+| Property                              | Default | Description                                                                    |
+|---------------------------------------|---------|--------------------------------------------------------------------------------|
+| `cronctl.scan.type`                   | `AUTO`  | Scan mode: `AUTO`, `ANNOTATED`, or `PACKAGE`                                   |
+| `cronctl.scan.base-packages`          | `[]`    | Packages to scan in `PACKAGE` mode                                             |
+| `cronctl.executor.thread-pool-size`   | `4`     | Number of threads in the async execution pool                                  |
+| `cronctl.executor.queue-capacity`     | `100`   | Maximum number of tasks waiting in the submission queue                        |
+| `cronctl.executor.timeout-seconds`    | `60`    | Default async execution timeout in seconds; `0` disables the timeout           |
+
+---
+
 ## [0.0.1] — 2026-05-21
 
 ### Added
@@ -47,4 +116,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Java 21+
 - Spring Boot 3.x
 
+[0.0.3]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.3
+[0.0.2]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.2
 [0.0.1]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.1

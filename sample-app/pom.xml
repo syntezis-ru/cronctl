@@ -23,7 +23,7 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <project.encoding>UTF-8</project.encoding>
 
-        <cronctl.version>0.0.2</cronctl.version>
+        <cronctl.version>0.0.3</cronctl.version>
 
         <spring-boot.version>3.5.14</spring-boot.version>
         <springdoc-openapi-starter-webmvc-ui.version>2.6.0</springdoc-openapi-starter-webmvc-ui.version>

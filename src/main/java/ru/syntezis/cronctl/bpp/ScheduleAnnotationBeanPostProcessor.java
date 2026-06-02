@@ -1,7 +1,6 @@
 package ru.syntezis.cronctl.bpp;
 
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.springframework.aop.support.AopUtils;
@@ -38,8 +37,12 @@ public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, E
     private final ScanModeFilter scanModeFilter;
     private final ScheduledBeanProcessor processor;
 
-    @Setter(onMethod_ = @Override)
     private StringValueResolver embeddedValueResolver;
+
+    @Override
+    public void setEmbeddedValueResolver(StringValueResolver resolver) {
+        this.embeddedValueResolver = resolver;
+    }
 
     @Override
     public @Nullable Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {

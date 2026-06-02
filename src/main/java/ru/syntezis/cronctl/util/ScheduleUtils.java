@@ -3,8 +3,13 @@ package ru.syntezis.cronctl.util;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.util.StringValueResolver;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
+
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 /**
  * Utility for extracting schedule configuration from a {@code @Scheduled} annotation.
@@ -43,6 +48,30 @@ public class ScheduleUtils {
                 .timeUnit(annotation.timeUnit())
                 .zone(resolve(resolver, annotation.zone()))
                 .build();
+    }
+
+    /**
+     * Computes the next scheduled execution time from a {@link ScheduleDetails}.
+     * Only supported for cron expressions — returns {@code null} for fixedRate / fixedDelay tasks,
+     * since those require knowing the last run time.
+     *
+     * @param schedule the schedule configuration to evaluate
+     * @return next execution timestamp, or {@code null} if not computable
+     */
+    public static @Nullable Instant computeNextExecutionAt(ScheduleDetails schedule) {
+        String cron = schedule.getCron();
+        if (cron == null || cron.isEmpty()) {
+            return null;
+        }
+        try {
+            CronExpression expression = CronExpression.parse(cron);
+            String zone = schedule.getZone();
+            ZoneId zoneId = (zone != null && !zone.isEmpty()) ? ZoneId.of(zone) : ZoneId.systemDefault();
+            ZonedDateTime next = expression.next(ZonedDateTime.now(zoneId));
+            return next != null ? next.toInstant() : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     private static String resolve(@Nullable StringValueResolver resolver, String value) {

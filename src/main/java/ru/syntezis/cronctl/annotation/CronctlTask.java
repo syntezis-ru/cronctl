@@ -19,30 +19,56 @@ import java.util.concurrent.TimeUnit;
 @Documented
 public @interface CronctlTask {
 
-    /** Display label shown in the API response. Defaults to the method name when blank. */
+    /**
+     * Display label shown in the API response. Defaults to the method name when blank.
+     *
+     * @return the display label, or empty string to use the method name
+     */
     @AliasFor("label")
     String value() default "";
 
-    /** Display label shown in the API response. Defaults to the method name when blank. */
+    /**
+     * Display label shown in the API response. Defaults to the method name when blank.
+     *
+     * @return the display label, or empty string to use the method name
+     */
     @AliasFor("value")
     String label() default "";
 
-    /** Human-readable description. Defaults to {@code ClassName.methodName} when blank. */
+    /**
+     * Human-readable description. Defaults to {@code ClassName.methodName} when blank.
+     *
+     * @return the description, or empty string to use the class and method name
+     */
     String description() default "";
 
-    /** Logical group for categorisation. Defaults to {@code "default"} when blank. */
+    /**
+     * Logical group for categorisation. Defaults to {@code "default"} when blank.
+     *
+     * @return the group name
+     */
     String group() default "default";
 
-    /** Arbitrary tags for filtering or categorisation. */
+    /**
+     * Arbitrary tags for filtering or categorisation.
+     *
+     * @return array of tags
+     */
     String[] tags() default {};
 
     /**
      * Task-level execution timeout. {@code 0} means use the global
      * {@code cronctl.executor.timeout-seconds} setting.
+     *
+     * @return the timeout value, or {@code 0} to use the global default
      */
     long timeout() default 0;
 
-    /** Time unit for {@link #timeout()}. */
+    /**
+     * Time unit for {@link #timeout()}.
+     *
+     * @return the time unit for the timeout value
+     */
     TimeUnit timeUnit() default TimeUnit.SECONDS;
 
     /**

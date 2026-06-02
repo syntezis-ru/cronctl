@@ -1,10 +1,8 @@
 package ru.syntezis.cronctl.config;
 
-import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,26 +10,23 @@ import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.*;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
-import org.springframework.core.env.MapPropertySource;
-import ru.syntezis.cronctl.CronctlConfiguration;
+import org.springframework.scheduling.config.ScheduledTaskHolder;
+import ru.syntezis.cronctl.bfpp.CronctlConfigurationContributor;
 import ru.syntezis.cronctl.bpp.ScheduleAnnotationBeanPostProcessor;
 import ru.syntezis.cronctl.config.security.CronctlSecurityConfiguration;
 import ru.syntezis.cronctl.config.security.CronctlSwaggerSecurityConfiguration;
 import ru.syntezis.cronctl.config.swagger.CronctlSwaggerConfiguration;
 import ru.syntezis.cronctl.core.Cronctl;
+import ru.syntezis.cronctl.core.NextExecutionTimeResolver;
 import ru.syntezis.cronctl.core.TaskRegistry;
 import ru.syntezis.cronctl.core.async.AsyncTaskExecutor;
 import ru.syntezis.cronctl.core.async.ExecutionRegistry;
 import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
-import ru.syntezis.cronctl.enums.ScanType;
 import ru.syntezis.cronctl.filter.MethodsFilter;
 import ru.syntezis.cronctl.filter.ScanModeFilter;
 import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
 import ru.syntezis.cronctl.properties.CronctlProperties;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Spring Boot autoconfiguration entry point for cronctl.
@@ -58,12 +53,14 @@ import java.util.Optional;
 @PropertySource("classpath:META-INF/cronctl/cronctl-defaults.properties")
 public class CronctlAutoConfiguration {
 
+    /** Registers the contributor that writes programmatic {@link ru.syntezis.cronctl.CronctlConfiguration} values into the environment. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static BeanFactoryPostProcessor cronctlConfigurationContributor(ConfigurableEnvironment environment) {
         return new CronctlConfigurationContributor(environment);
     }
 
+    /** Registers the BPP that scans beans for {@code @Scheduled} methods and populates the task registry. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static ScheduleAnnotationBeanPostProcessor scheduleAnnotationBeanPostProcessor(
@@ -72,12 +69,14 @@ public class CronctlAutoConfiguration {
         return new ScheduleAnnotationBeanPostProcessor(registry, methodsFilter, scanModeFilter, processor);
     }
 
+    /** Registers the filter that restricts which {@code @Scheduled} methods are eligible for registration. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static MethodsFilter cronctlMethodsFilter() {
         return new MethodsFilter();
     }
 
+    /** Registers the scan-mode filter that applies {@code AUTO}, {@code ANNOTATED}, or {@code PACKAGE} rules. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static ScanModeFilter cronctlScanModeFilter(Environment environment) {
@@ -86,93 +85,55 @@ public class CronctlAutoConfiguration {
         return new ScanModeFilter(scan);
     }
 
+    /** Registers the processor that extracts schedule metadata from annotated bean methods. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static ScheduledBeanProcessor cronctlScheduledBeanProcessor() {
         return new ScheduledBeanProcessor();
     }
 
+    /** Registers the in-memory registry that holds all discovered {@code @Scheduled} tasks. */
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     public static TaskRegistry cronctlTaskRegistry() {
         return new TaskRegistry();
     }
 
+    /** Registers the synchronous task executor used for direct (blocking) task invocation. */
     @Bean
     @Role(BeanDefinition.ROLE_SUPPORT)
     public BlockingTaskExecutor cronctlTaskExecutor() {
         return new BlockingTaskExecutor();
     }
 
+    /** Registers the main cronctl facade that exposes the public API for listing and executing tasks. */
     @Bean
     @Role(BeanDefinition.ROLE_APPLICATION)
     public Cronctl cronctl(TaskRegistry registry, BlockingTaskExecutor executor) {
         return new Cronctl(registry, executor);
     }
 
+    /** Registers the resolver that computes next execution times for cron-based tasks. */
+    @Bean
+    @Role(BeanDefinition.ROLE_SUPPORT)
+    public NextExecutionTimeResolver cronctlNextExecutionTimeResolver(
+            ObjectProvider<ScheduledTaskHolder> scheduledTaskHolderProvider) {
+        return new NextExecutionTimeResolver(scheduledTaskHolderProvider);
+    }
+
+    /** Registers the in-memory registry that tracks async execution state. */
     @Bean
     @Role(BeanDefinition.ROLE_SUPPORT)
     public ExecutionRegistry cronctlExecutionRegistry() {
         return new ExecutionRegistry();
     }
 
+    /** Registers the async task executor with a bounded thread pool configured from {@code cronctl.executor.*}. */
     @Bean
     @Role(BeanDefinition.ROLE_SUPPORT)
     public AsyncTaskExecutor cronctlAsyncTaskExecutor(BlockingTaskExecutor syncExecutor,
                                                       ExecutionRegistry executionRegistry,
                                                       CronctlProperties properties) {
         return new AsyncTaskExecutor(syncExecutor, executionRegistry, properties.getExecutor());
-    }
-
-    /**
-     * Reads a user-declared {@link CronctlConfiguration} bean and writes its non-null fields
-     * into the {@link Environment} at the highest priority before any cronctl bean is instantiated.
-     *
-     * <p>This allows programmatic configuration to override {@code application.yml} and cronctl
-     * defaults for all properties — including security and scan settings.
-     */
-    @RequiredArgsConstructor
-    private static class CronctlConfigurationContributor implements BeanFactoryPostProcessor {
-
-        private final ConfigurableEnvironment environment;
-
-        @Override
-        public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
-            String[] names = beanFactory.getBeanNamesForType(CronctlConfiguration.class, false, false);
-            if (names.length == 0) {
-                return;
-            }
-
-            CronctlConfiguration config = beanFactory.getBean(CronctlConfiguration.class);
-            Map<String, Object> properties = toPropertyMap(config);
-
-            if (properties.isEmpty()) {
-                return;
-            }
-
-            environment.getPropertySources()
-                    .addFirst(new MapPropertySource("cronctlProgrammaticConfig", properties));
-        }
-
-        private Map<String, Object> toPropertyMap(CronctlConfiguration config) {
-            Map<String, Object> map = new LinkedHashMap<>();
-            putIfPresent(map, "cronctl.api.base-path", config.getBasePath());
-            putIfPresent(map, "cronctl.api.public-access", config.getApiPublicAccess());
-            putIfPresent(map, "cronctl.swagger.public-access", config.getSwaggerPublicAccess());
-            putIfPresent(map, "cronctl.swagger.group", config.getSwaggerGroup());
-            putIfPresent(map, "cronctl.swagger.paths-to-match", config.getSwaggerPathsToMatch());
-            putIfPresent(map, "cronctl.scan.type", Optional.ofNullable(config.getScanType()).map(ScanType::name).orElse(null));
-            putIfPresent(map, "cronctl.scan.base-packages", Optional.ofNullable(config.getScanBasePackages()).filter(p -> !p.isEmpty()).orElse(null));
-            putIfPresent(map, "cronctl.executor.thread-pool-size", config.getExecutorThreadPoolSize());
-            putIfPresent(map, "cronctl.executor.queue-capacity", config.getExecutorQueueCapacity());
-            putIfPresent(map, "cronctl.executor.timeout-seconds", config.getExecutorTimeoutSeconds());
-            return map;
-        }
-
-        private static void putIfPresent(Map<String, Object> map, String key, @Nullable Object value) {
-            if (value != null) {
-                map.put(key, value);
-            }
-        }
     }
 }
