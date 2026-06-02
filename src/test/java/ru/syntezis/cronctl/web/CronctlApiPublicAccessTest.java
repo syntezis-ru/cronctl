@@ -39,7 +39,7 @@ class CronctlApiPublicAccessTest {
 
     @Test
     void executeTask_PublicAccess_RegisteredId_Returns200() throws Exception {
-        UUID id = cronctl.getAllTasks().getFirst().getId();
+        UUID id = cronctl.getAllTasks().get(0).getId();
 
         mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", id))
                 .andExpect(status().isOk())

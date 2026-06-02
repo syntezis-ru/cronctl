@@ -61,7 +61,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
         assertThat(tasks)
                 .hasSize(1);
 
-        Task task = tasks.getFirst();
+        Task task = tasks.get(0);
 
         assertThat(task)
                 .hasNoNullFieldsOrProperties()

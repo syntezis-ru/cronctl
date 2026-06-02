@@ -13,7 +13,7 @@ import ru.syntezis.cronctl.properties.CronctlProperties;
  *
  * <p>Registers a {@link SecurityFilterChain} scoped to {@code {base-path}/**}.
  * The access policy is determined at bean instantiation time from
- * {@link CronctlProperties.Api#isPublicAccess()}:
+ * {@link CronctlProperties.Api} ({@code cronctl.api.public-access}):
  * <ul>
  *   <li>{@code true} (default) — all requests permitted without authentication</li>
  *   <li>{@code false} — all requests require authentication</li>
@@ -27,6 +27,11 @@ public class CronctlSecurityConfiguration {
     private final String apiSecurityMatcherPattern;
     private final boolean publicAccess;
 
+    /**
+     * Creates the security configuration from cronctl properties.
+     *
+     * @param properties cronctl configuration properties
+     */
     public CronctlSecurityConfiguration(CronctlProperties properties) {
         apiSecurityMatcherPattern = properties.getApi().getBasePath() + "/**";
         publicAccess = properties.getApi().isPublicAccess();
@@ -36,6 +41,10 @@ public class CronctlSecurityConfiguration {
      * Registers a security filter chain for the cronctl API.
      * Permits all requests when {@code cronctl.api.public-access=true}; requires
      * authentication otherwise.
+     *
+     * @param http the {@link HttpSecurity} to configure
+     * @return the configured {@link SecurityFilterChain}
+     * @throws Exception if the security configuration fails
      */
     @Bean(name = "cronctlApiSecurityFilterChain")
     @Order(SecurityProperties.BASIC_AUTH_ORDER - 2)

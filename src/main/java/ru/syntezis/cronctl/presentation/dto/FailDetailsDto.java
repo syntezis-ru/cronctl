@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Details of a failed task execution. */
 @Data
 @Builder
 @NoArgsConstructor

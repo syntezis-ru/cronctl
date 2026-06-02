@@ -5,8 +5,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import ru.syntezis.cronctl.domain.task.Task;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -41,5 +43,10 @@ public class TaskResponseDto {
     @JsonProperty("details")
     @Schema(description = "Method details including id, name and schedule configuration")
     private ScheduledMethodDetailsDto details;
+
+    @JsonProperty("next_execution_at")
+    @Nullable
+    @Schema(description = "Next scheduled execution time in UTC; null for fixedRate/fixedDelay tasks")
+    private Instant nextExecutionAt;
 
 }

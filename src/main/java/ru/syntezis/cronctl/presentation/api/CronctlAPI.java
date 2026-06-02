@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.syntezis.cronctl.presentation.dto.NextExecutionDto;
 import ru.syntezis.cronctl.presentation.dto.TaskExecutionResultDto;
 import ru.syntezis.cronctl.presentation.dto.TasksResponseDto;
 
@@ -24,6 +25,7 @@ import java.util.UUID;
 @Tag(name = "cronctl API", description = "HTTP API for managing @Scheduled methods")
 public interface CronctlAPI {
 
+    /** Returns all registered {@code @Scheduled} tasks, optionally filtered by group and tag. */
     @GetMapping("/tasks")
     @Operation(
             summary = "Get scheduled tasks",
@@ -39,6 +41,23 @@ public interface CronctlAPI {
             @Parameter(description = "Return only tasks belonging to this group") @RequestParam(name = "group", required = false) @Nullable String group,
             @Parameter(description = "Return only tasks carrying this tag") @RequestParam(name = "tag", required = false) @Nullable String tag);
 
+    /** Returns the next scheduled execution time for a cron-based task. */
+    @GetMapping("/tasks/{id}/next-execution")
+    @Operation(
+            summary = "Get next execution time",
+            description = "Returns the next scheduled execution time for a cron-based task. " +
+                    "next_execution_at is null for fixedRate or fixedDelay tasks — next execution time " +
+                    "cannot be computed without knowing the last run time."
+    )
+    @ApiResponse(responseCode = "200", description = "Next execution time",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = NextExecutionDto.class)
+            )
+    )
+    @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
+    ResponseEntity<NextExecutionDto> getNextExecutionTime(@PathVariable("id") UUID id);
+
+    /** Manually triggers a {@code @Scheduled} method synchronously by its task ID. */
     @PostMapping("/tasks/{id}/execute")
     @Operation(
             summary = "Execute scheduled task",

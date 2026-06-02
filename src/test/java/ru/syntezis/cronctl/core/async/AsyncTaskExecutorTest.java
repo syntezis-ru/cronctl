@@ -1,5 +1,6 @@
 package ru.syntezis.cronctl.core.async;
 
+import lombok.RequiredArgsConstructor;
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -185,13 +186,10 @@ class AsyncTaskExecutorTest {
 
     }
 
+    @RequiredArgsConstructor
     private static class LatchBlockingScheduler {
 
         private final CountDownLatch latch;
-
-        LatchBlockingScheduler(CountDownLatch latch) {
-            this.latch = latch;
-        }
 
         @Scheduled(fixedRate = Long.MAX_VALUE)
         public void latchTask() throws InterruptedException {

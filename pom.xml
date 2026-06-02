@@ -65,12 +65,11 @@
 
     <properties>
         <!-- Project revision -->
-        <revision>0.0.2</revision>
+        <revision>0.0.3</revision>
 
         <!-- System properties -->
-        <java.version>21</java.version>
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.encoding>UTF-8</project.encoding>
         <project.build.sourceEncoding>${project.encoding}</project.build.sourceEncoding>
         <project.reporting.outputEncoding>${project.encoding}</project.reporting.outputEncoding>
@@ -266,14 +265,15 @@
                         <exclude>**/domain/ScheduleDetails.class</exclude>
                         <exclude>**/domain/ScheduledMethodDetails.class</exclude>
                         <exclude>**/domain/ScheduledMethodReference.class</exclude>
-                        <exclude>**/domain/ScheduledBeanDetails.class</exclude>
                         <!-- Spring configuration classes -->
                         <exclude>**/config/**</exclude>
                         <!-- Enums, exceptions, properties — trivial or generated -->
                         <exclude>**/enums/**</exclude>
                         <exclude>**/exception/**</exclude>
                         <exclude>**/properties/**</exclude>
-                        <exclude>**/epp/**</exclude>
+                        <!-- Internal Spring infrastructure processors -->
+                        <exclude>**/bpp/**</exclude>
+                        <exclude>**/bfpp/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>
@@ -287,9 +287,17 @@
                     <encoding>${project.encoding}</encoding>
                     <docencoding>${project.encoding}</docencoding>
                     <charset>${project.encoding}</charset>
-                    <failOnError>false</failOnError>
+                    <failOnError>true</failOnError>
                     <quiet>true</quiet>
-                    <excludePackageNames>ru.syntezis.cronctl.bpp</excludePackageNames>
+                    <excludePackageNames>ru.syntezis.cronctl.bpp:ru.syntezis.cronctl.bfpp</excludePackageNames>
+                    <sourceFileExcludes>
+                        <sourceFileExclude>ru/syntezis/cronctl/bpp/**</sourceFileExclude>
+                        <sourceFileExclude>ru/syntezis/cronctl/bfpp/**</sourceFileExclude>
+                    </sourceFileExcludes>
+                    <sourcepath>${project.build.sourceDirectory}</sourcepath>
+                    <additionalJOptions>
+                        <additionalJOption>-Xdoclint:all,-missing</additionalJOption>
+                    </additionalJOptions>
                 </configuration>
                 <executions>
                     <execution>
@@ -332,8 +340,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <release>${java.version}</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

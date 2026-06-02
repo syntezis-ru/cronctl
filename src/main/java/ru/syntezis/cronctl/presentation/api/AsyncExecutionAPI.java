@@ -24,6 +24,7 @@ import java.util.UUID;
 @Tag(name = "cronctl API", description = "HTTP API for managing @Scheduled methods")
 public interface AsyncExecutionAPI {
 
+    /** Returns all executions, optionally filtered by status. */
     @GetMapping("/executions")
     @Operation(
             summary = "List executions",
@@ -36,6 +37,7 @@ public interface AsyncExecutionAPI {
             @Parameter(description = "Filter by execution status; omit to return all")
             @RequestParam(name = "status", required = false) @Nullable TaskExecutionStatus status);
 
+    /** Enqueues a registered {@code @Scheduled} task for asynchronous execution and returns an execution ID. */
     @PostMapping("/tasks/{taskId}/executions")
     @Operation(
             summary = "Submit task for async execution",
@@ -49,6 +51,7 @@ public interface AsyncExecutionAPI {
     ResponseEntity<ExecutionSubmittedDto> submitExecution(
             @Parameter(description = "ID of the task to execute") @PathVariable("taskId") UUID taskId);
 
+    /** Returns the current state and result of a previously submitted async execution. */
     @GetMapping("/executions/{executionId}")
     @Operation(
             summary = "Get execution status",
@@ -61,6 +64,7 @@ public interface AsyncExecutionAPI {
     ResponseEntity<ExecutionStatusDto> getExecution(
             @Parameter(description = "Execution ID returned by the submit endpoint") @PathVariable("executionId") UUID executionId);
 
+    /** Requests cancellation of a PENDING or RUNNING execution. */
     @DeleteMapping("/executions/{executionId}")
     @Operation(
             summary = "Cancel execution",

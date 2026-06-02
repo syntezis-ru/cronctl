@@ -12,6 +12,7 @@ import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Response DTO describing the current state of a single async task execution. */
 @Data
 @Builder
 @NoArgsConstructor

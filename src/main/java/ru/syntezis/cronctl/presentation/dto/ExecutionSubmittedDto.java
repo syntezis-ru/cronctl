@@ -11,6 +11,7 @@ import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 import java.time.Instant;
 import java.util.UUID;
 
+/** Response DTO returned when an async task execution is accepted ({@code 202 Accepted}). */
 @Data
 @Builder
 @NoArgsConstructor

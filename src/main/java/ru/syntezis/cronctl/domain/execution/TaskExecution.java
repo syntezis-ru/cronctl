@@ -70,7 +70,7 @@ public class TaskExecution {
 
     /**
      * Stores the result and transitions to {@code SUCCEEDED} or {@code FAILED}
-     * based on {@link TaskExecutionDetails#getStatus()}.
+     * based on {@link TaskExecutionDetails} status.
      */
     public synchronized void complete(TaskExecutionDetails details) {
         if (state != TaskExecutionStatus.RUNNING) {
@@ -108,7 +108,7 @@ public class TaskExecution {
 
     /**
      * Transitions a {@code RUNNING} execution to {@code CANCELLED} or {@code TIMED_OUT}.
-     * Called by the executing thread after detecting {@link #isCancellationRequested()}.
+     * Called by the executing thread after detecting that cancellation was requested.
      */
     public synchronized void markCancelled() {
         if (state != TaskExecutionStatus.RUNNING) {

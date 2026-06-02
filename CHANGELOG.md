@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.3] — 2026-06-02
+
+### Added
+
+- **Next execution time** — every task in the API now includes a `next_execution_at` field (ISO-8601 UTC instant):
+    - `GET /api/cronctl/tasks` — each task object now contains `next_execution_at`
+    - `GET /api/cronctl/tasks/{id}/next-execution` — returns the next execution time for a single task by ID
+- `next_execution_at` is resolved via Spring's `ScheduledTaskHolder` for all schedule types
+  (cron, fixedRate, fixedDelay). When `ScheduledTaskHolder` is unavailable, cron tasks fall back
+  to `CronExpression` arithmetic. For fixedRate / fixedDelay tasks without a live future the field is `null`.
+
+### Changed
+
+- Bytecode target lowered from Java 21 to Java 17; cronctl now works in any Java 17+ application.
+  The library continues to be built with JDK 21 — no language features or APIs are affected.
+
+---
+
 ## [0.0.2] — 2026-05-28
 
 ### Added
@@ -98,5 +116,6 @@ New properties introduced in this release:
 - Java 21+
 - Spring Boot 3.x
 
+[0.0.3]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.3
 [0.0.2]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.2
 [0.0.1]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.1

@@ -8,9 +8,11 @@ import org.mapstruct.ReportingPolicy;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 import ru.syntezis.cronctl.presentation.dto.ScheduleDetailsDto;
 
+/** MapStruct mapper converting {@link ru.syntezis.cronctl.domain.scheduled.ScheduleDetails} to {@link ru.syntezis.cronctl.presentation.dto.ScheduleDetailsDto}. */
 @Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR, componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ScheduleDetailsMapper {
 
+    /** Converts schedule details domain object to DTO. */
     @Mapping(target = "cron",               expression = "java(emptyToNull(s.getCron()))")
     @Mapping(target = "zone",               expression = "java(emptyToNull(s.getZone()))")
     @Mapping(target = "fixedRate",          expression = "java(negOneToNull(s.getFixedRate()))")
@@ -22,10 +24,12 @@ public interface ScheduleDetailsMapper {
     @Mapping(target = "scheduler",          expression = "java(emptyToNull(s.getScheduler()))")
     ScheduleDetailsDto toDto(ScheduleDetails s);
 
+    /** Returns {@code null} if the value is empty or blank, otherwise the value unchanged. */
     default @Nullable String emptyToNull(String value) {
         return value.isEmpty() ? null : value;
     }
 
+    /** Returns {@code null} if the value is {@code -1} (unset Spring annotation attribute), otherwise the value. */
     default @Nullable Long negOneToNull(long value) {
         return value == -1L ? null : value;
     }

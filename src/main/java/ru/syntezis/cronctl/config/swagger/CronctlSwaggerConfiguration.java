@@ -19,6 +19,8 @@ public class CronctlSwaggerConfiguration {
 
     /**
      * Exposes the cronctl controller paths under a named OpenAPI group.
+     *
+     * @return the configured {@link GroupedOpenApi} bean
      */
     @Bean
     @ConditionalOnClass(name = "org.springdoc.core.models.GroupedOpenApi")
