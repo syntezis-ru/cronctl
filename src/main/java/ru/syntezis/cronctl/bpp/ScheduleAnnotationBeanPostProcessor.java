@@ -37,7 +37,7 @@ public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, E
     private final ScanModeFilter scanModeFilter;
     private final ScheduledBeanProcessor processor;
 
-    private StringValueResolver embeddedValueResolver;
+    private @Nullable StringValueResolver embeddedValueResolver;
 
     @Override
     public void setEmbeddedValueResolver(StringValueResolver resolver) {
