@@ -79,7 +79,7 @@
         <mapstruct.version>1.6.3</mapstruct.version>
         <springdoc-openapi-starter-webmvc-ui.version>2.6.0</springdoc-openapi-starter-webmvc-ui.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <byte-buddy.version>1.18.8</byte-buddy.version>
+        <byte-buddy.version>1.18.10</byte-buddy.version>
         <vavr.version>1.0.1</vavr.version>
         <easy-random.version>5.0.0</easy-random.version>
 
