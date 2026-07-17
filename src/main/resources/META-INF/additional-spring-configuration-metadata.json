@@ -24,6 +24,12 @@
       "sourceMethod": "getSwagger()"
     },
     {
+      "name": "cronctl.ui",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$Ui",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getUi()"
+    },
+    {
       "name": "cronctl.executor",
       "type": "ru.syntezis.cronctl.properties.CronctlProperties$Executor",
       "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
@@ -87,6 +93,13 @@
       "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Swagger"
     },
     {
+      "name": "cronctl.ui.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable the cronctl operator UI when Thymeleaf is available.",
+      "defaultValue": true,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Ui"
+    },
+    {
       "name": "cronctl.executor.thread-pool-size",
       "type": "java.lang.Integer",
       "description": "Number of threads in the async execution pool.",
@@ -103,7 +116,7 @@
     {
       "name": "cronctl.executor.timeout-seconds",
       "type": "java.lang.Long",
-      "description": "Default execution timeout in seconds. 0 disables the timeout. Can be overridden per task via @CronctlTask(timeout=...).",
+      "description": "Default execution timeout in seconds. 0 disables the global timeout. A task with timeout=0 inherits this value, timeout=-1 disables it, and a positive timeout overrides it.",
       "defaultValue": 60,
       "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Executor"
     }

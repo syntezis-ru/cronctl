@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.annotation.Scheduled;
+import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.execution.TaskExecution;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.RejectedExecutionException;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -86,7 +88,7 @@ class AsyncTaskExecutorTest {
 
     @Test
     void submit_WithTaskLevelTimeout_ExecutionTimesOut() throws Exception {
-        // Given — task-level timeout of 1 s, no global timeout
+        // Given
         Task task = buildTask(new InterruptibleBlockingScheduler(), "blockingTask", 1);
 
         // When
@@ -96,6 +98,54 @@ class AsyncTaskExecutorTest {
         // Then
         await().atMost(3, SECONDS).until(execution::isTerminal);
         assertThat(execution.getState()).isEqualTo(TaskExecutionStatus.TIMED_OUT);
+    }
+
+    @Test
+    void submit_InheritedTimeoutWithGlobalTimeout_ExecutionTimesOut() throws Exception {
+        // Given
+        underTest.shutdown();
+        underTest = new AsyncTaskExecutor(syncExecutor, executionRegistry,
+                new CronctlProperties.Executor(2, 10, 1));
+        final Task task = buildTask(new InterruptibleBlockingScheduler(), "blockingTask",
+                CronctlTask.USE_GLOBAL_TIMEOUT);
+
+        // When
+        final UUID executionId = underTest.submit(task);
+        final TaskExecution execution = executionRegistry.getById(executionId).orElseThrow();
+
+        // Then
+        await().atMost(3, SECONDS).until(execution::isTerminal);
+        assertThat(execution.getState()).isEqualTo(TaskExecutionStatus.TIMED_OUT);
+    }
+
+    @Test
+    void submit_NoTimeoutWithGlobalTimeout_ExecutionKeepsRunning() throws Exception {
+        // Given
+        underTest.shutdown();
+        underTest = new AsyncTaskExecutor(syncExecutor, executionRegistry,
+                new CronctlProperties.Executor(2, 10, 1)
+        );
+
+        CountDownLatch blockLatch = new CountDownLatch(1);
+        Task task = buildTask(new LatchBlockingScheduler(blockLatch), "latchTask", CronctlTask.NO_TIMEOUT);
+        UUID executionId = underTest.submit(task);
+        TaskExecution execution = executionRegistry.getById(executionId).orElseThrow();
+
+        try {
+            await().atMost(2, SECONDS)
+                    .until(() -> execution.getState() == TaskExecutionStatus.RUNNING);
+
+            // When
+            await().during(1200, MILLISECONDS).atMost(2, SECONDS)
+                    .until(() -> execution.getState() == TaskExecutionStatus.RUNNING);
+
+            // Then
+            TaskExecutionStatus expected = TaskExecutionStatus.RUNNING;
+            final TaskExecutionStatus actual = execution.getState();
+            assertThat(actual).isEqualTo(expected);
+        } finally {
+            blockLatch.countDown();
+        }
     }
 
     @Test
@@ -118,7 +168,7 @@ class AsyncTaskExecutorTest {
 
     @Test
     void submit_QueueFull_ThrowsRejectedExecutionException() throws Exception {
-        // Given — pool=1, queue=1 → max 2 inflight before rejection
+        // Given
         CountDownLatch blockLatch = new CountDownLatch(1);
         AsyncTaskExecutor smallExecutor = new AsyncTaskExecutor(syncExecutor, new ExecutionRegistry(),
                 new CronctlProperties.Executor(1, 1, 0));
@@ -164,7 +214,8 @@ class AsyncTaskExecutorTest {
     private static class InstantScheduler {
 
         @Scheduled(fixedRate = Long.MAX_VALUE)
-        public void fastTask() { }
+        public void fastTask() {
+        }
 
     }
 

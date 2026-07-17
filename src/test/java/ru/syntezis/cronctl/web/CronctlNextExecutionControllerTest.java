@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.core.Cronctl;
 
@@ -67,6 +68,20 @@ class CronctlNextExecutionControllerTest {
                 .andExpect(jsonPath("$.tasks[?(@.label == 'next-exec-fixed')].next_execution_at").isNotEmpty());
     }
 
+    @Test
+    void getScheduledTasks_NoTimeoutTask_TimeoutReturnedWithoutMappingFailure() throws Exception {
+        // Given
+        final long expected = CronctlTask.NO_TIMEOUT;
+
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/tasks")
+                .param("group", "no-timeout"));
+
+        // Then
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.tasks[0].timeout_seconds").value(expected));
+    }
+
     private UUID cronTaskId() {
         return cronctl.getAllTasks().stream()
                 .filter(task -> "next-exec-cron".equals(task.getLabel()))
@@ -99,7 +114,11 @@ class CronctlNextExecutionControllerTest {
         @Scheduled(cron = "0 * * * * *")
         public void cronTask() {}
 
-        @CronctlTask(label = "next-exec-fixed")
+        @CronctlTask(
+                label = "next-exec-fixed",
+                group = "no-timeout",
+                timeout = CronctlTask.NO_TIMEOUT
+        )
         @Scheduled(fixedRate = Integer.MAX_VALUE, initialDelay = Integer.MAX_VALUE)
         public void fixedRateTask() {}
 

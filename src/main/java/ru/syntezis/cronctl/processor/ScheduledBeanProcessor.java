@@ -2,6 +2,7 @@ package ru.syntezis.cronctl.processor;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.util.StringValueResolver;
 import ru.syntezis.cronctl.annotation.CronctlTask;
@@ -33,7 +34,7 @@ public class ScheduledBeanProcessor {
      * @param resolver        resolver for property placeholders in annotation attributes; may be {@code null}
      * @return a fully-populated {@link Task}
      */
-    public Task process(Object bean, String beanName, Method scheduledMethod, StringValueResolver resolver) {
+    public Task process(Object bean, String beanName, Method scheduledMethod, @Nullable StringValueResolver resolver) {
         UUID id = UUID.randomUUID();
         String methodName = scheduledMethod.getName();
 
@@ -59,7 +60,10 @@ public class ScheduledBeanProcessor {
                         .orElse("default")
                 )
                 .tags(taskAnnotation.map(t -> Arrays.stream(t.tags()).toList()).orElse(List.of()))
-                .timeoutSeconds(taskAnnotation.map(t -> t.timeUnit().toSeconds(t.timeout())).orElse(0L))
+                .enabled(true)
+                .togglingEnabled(taskAnnotation.map(CronctlTask::togglingEnabled).orElse(false))
+                .timeoutSeconds(taskAnnotation.map(this::resolveTimeoutSeconds)
+                        .orElse(CronctlTask.USE_GLOBAL_TIMEOUT))
                 .details(ScheduledMethodDetails.builder()
                         .id(id)
                         .schedule(ScheduleUtils.assembleScheduleDetails(annotation, resolver))
@@ -74,5 +78,23 @@ public class ScheduledBeanProcessor {
                                 .build()
                 )
                 .build();
+    }
+
+    private long resolveTimeoutSeconds(CronctlTask taskAnnotation) {
+        long timeout = taskAnnotation.timeout();
+        if (timeout < CronctlTask.NO_TIMEOUT) {
+            throw new IllegalArgumentException("Cronctl task timeout must be -1, 0, or a positive value");
+        }
+
+        if (timeout == CronctlTask.NO_TIMEOUT || timeout == CronctlTask.USE_GLOBAL_TIMEOUT) {
+            return timeout;
+        }
+
+        long timeoutSeconds = taskAnnotation.timeUnit().toSeconds(timeout);
+        if (timeoutSeconds == CronctlTask.USE_GLOBAL_TIMEOUT) {
+            throw new IllegalArgumentException("Cronctl task timeout must be at least one second");
+        }
+
+        return timeoutSeconds;
     }
 }

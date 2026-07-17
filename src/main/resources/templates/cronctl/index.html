@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>cronctl · Schedule operations</title>
+    <link rel="stylesheet" th:href="${apiBasePath + '/ui/assets/cronctl-ui.css'}">
+    <script defer th:src="${apiBasePath + '/ui/assets/cronctl-ui.js'}"></script>
+</head>
+<body th:attr="data-api-base-path=${apiBasePath}">
+<a class="skip-link" href="#workspace">Skip to task controls</a>
+
+<div class="app-shell">
+    <header class="topbar">
+        <a class="brand" th:href="${apiBasePath + '/ui'}" aria-label="cronctl home">
+            <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
+                <circle cx="24" cy="24" r="21" class="brand-mark__field"/>
+                <ellipse cx="24" cy="24" rx="15" ry="8" class="brand-mark__orbit"/>
+                <ellipse cx="24" cy="24" rx="8" ry="15" class="brand-mark__orbit"/>
+                <circle cx="24" cy="24" r="5" class="brand-mark__core"/>
+                <path d="M24 24V20M24 24H28" class="brand-mark__hands"/>
+            </svg>
+            <span>
+                <strong>cronctl</strong>
+                <small>schedule operations</small>
+            </span>
+        </a>
+
+        <div class="topbar__actions">
+            <span class="connection-state" id="connection-state" role="status">
+                <span class="connection-state__dot" aria-hidden="true"></span>
+                <span id="connection-label">Connecting</span>
+            </span>
+            <button class="icon-button" id="refresh-button" type="button" aria-label="Refresh tasks and executions">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+        <section class="overview" aria-labelledby="overview-title">
+            <div class="overview__heading">
+                <div>
+                    <p class="eyebrow">Live schedule</p>
+                    <h1 id="overview-title">What runs next</h1>
+                </div>
+                <p class="overview__clock" id="local-clock" aria-label="Local time">--:--:--</p>
+            </div>
+
+            <div class="cadence-rail" id="cadence-rail" aria-live="polite">
+                <div class="cadence-rail__line" aria-hidden="true"></div>
+                <p class="empty-inline">Waiting for schedule data…</p>
+            </div>
+
+            <dl class="metrics" aria-label="Current totals">
+                <div class="metric">
+                    <dt>Registered</dt>
+                    <dd id="metric-registered">—</dd>
+                </div>
+                <div class="metric">
+                    <dt>Scheduled</dt>
+                    <dd id="metric-enabled">—</dd>
+                </div>
+                <div class="metric">
+                    <dt>Active runs</dt>
+                    <dd id="metric-active">—</dd>
+                </div>
+                <div class="metric metric--alert">
+                    <dt>Recent failures</dt>
+                    <dd id="metric-failed">—</dd>
+                </div>
+            </dl>
+        </section>
+
+        <div class="notice notice--error" id="error-notice" role="alert" hidden>
+            <div>
+                <strong id="error-title">Could not load cronctl</strong>
+                <p id="error-message">Check access and try again.</p>
+            </div>
+            <button class="text-button" id="error-retry" type="button">Try again</button>
+        </div>
+
+        <nav class="view-tabs" role="tablist" aria-label="Operator views">
+            <button class="view-tab is-active" id="tasks-tab" type="button" role="tab"
+                    aria-selected="true" aria-controls="tasks-panel" data-view="tasks">
+                Tasks <span class="view-tab__count" id="tasks-tab-count">0</span>
+            </button>
+            <button class="view-tab" id="executions-tab" type="button" role="tab"
+                    aria-selected="false" aria-controls="executions-panel" data-view="executions">
+                Executions <span class="view-tab__count" id="executions-tab-count">0</span>
+            </button>
+        </nav>
+
+        <section class="view-panel" id="tasks-panel" role="tabpanel" aria-labelledby="tasks-tab">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Automatic work</p>
+                    <h2>Scheduled tasks</h2>
+                    <p>Inspect schedules, pause automatic runs, or start a tracked execution.</p>
+                </div>
+            </div>
+
+            <form class="filters" id="task-filters" role="search">
+                <label class="search-field">
+                    <span class="sr-only">Search tasks</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6"/>
+                        <path d="m16 16 4 4"/>
+                    </svg>
+                    <input id="task-search" type="search" placeholder="Search label, method, tag…" autocomplete="off">
+                </label>
+                <label>
+                    <span class="sr-only">Filter by group</span>
+                    <select id="group-filter">
+                        <option value="">All groups</option>
+                    </select>
+                </label>
+                <label>
+                    <span class="sr-only">Filter by schedule state</span>
+                    <select id="state-filter">
+                        <option value="">Any state</option>
+                        <option value="enabled">Scheduled</option>
+                        <option value="disabled">Paused</option>
+                    </select>
+                </label>
+            </form>
+
+            <div class="task-list" id="task-list" aria-live="polite" aria-busy="true">
+                <div class="loading-state">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <p>Reading registered schedules…</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="view-panel" id="executions-panel" role="tabpanel" aria-labelledby="executions-tab" hidden>
+            <div class="section-heading section-heading--split">
+                <div>
+                    <p class="eyebrow">Manual work</p>
+                    <h2>Tracked executions</h2>
+                    <p>Latest 100 async runs, newest first.</p>
+                </div>
+                <label class="compact-filter">
+                    <span>Status</span>
+                    <select id="execution-filter">
+                        <option value="">All</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="RUNNING">Running</option>
+                        <option value="SUCCEEDED">Succeeded</option>
+                        <option value="FAILED">Failed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                        <option value="TIMED_OUT">Timed out</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="execution-list" id="execution-list" aria-live="polite" aria-busy="true">
+                <div class="loading-state">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <p>Reading execution history…</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <span>cronctl operator UI</span>
+        <a th:href="${apiBasePath + '/tasks'}">JSON API</a>
+    </footer>
+</div>
+
+<dialog class="confirm-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+        <div class="confirm-dialog__signal" aria-hidden="true">!</div>
+        <div class="confirm-dialog__copy">
+            <p class="eyebrow">Confirm action</p>
+            <h2 id="confirm-title">Run task?</h2>
+            <p id="confirm-message">This creates a tracked asynchronous execution.</p>
+        </div>
+        <label class="interrupt-option" id="interrupt-option" hidden>
+            <input id="interrupt-checkbox" type="checkbox">
+            <span>
+                <strong>Interrupt current invocation</strong>
+                <small>Request interruption if the scheduled method is running now.</small>
+            </span>
+        </label>
+        <div class="confirm-dialog__actions">
+            <button class="button button--quiet" value="cancel" type="submit">Keep current state</button>
+            <button class="button button--primary" id="confirm-submit" value="confirm" type="submit">Run task</button>
+        </div>
+    </form>
+</dialog>
+
+<div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

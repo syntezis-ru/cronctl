@@ -1,16 +1,11 @@
 package ru.syntezis.cronctl.core;
 
 import lombok.RequiredArgsConstructor;
-import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.task.Task;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
-import ru.syntezis.cronctl.exception.TaskNotFoundException;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import static java.lang.String.format;
 
 /**
  * Main facade for managing registered {@code @Scheduled} tasks.
@@ -23,7 +18,6 @@ import static java.lang.String.format;
 public class Cronctl {
 
     private final TaskRegistry registry;
-    private final BlockingTaskExecutor executor;
 
     /**
      * Returns all tasks currently registered in the registry.
@@ -72,22 +66,5 @@ public class Cronctl {
      */
     public Optional<Task> getById(UUID id) {
         return registry.getById(id);
-    }
-
-    /**
-     * Manually triggers the {@code @Scheduled} method associated with the given task id.
-     *
-     * <p>The method is invoked synchronously on the calling thread.
-     * Execution metrics and outcome are captured in the returned {@link TaskExecutionDetails}.
-     *
-     * @param id UUID of the task to execute
-     * @return execution details including status, timing, and failure information if any
-     * @throws TaskNotFoundException if no task with the given id is registered
-     */
-    public TaskExecutionDetails executeTaskByID(UUID id) {
-        Task task = registry.getById(id)
-                .orElseThrow(() -> new TaskNotFoundException(format("Task with id = %s not found", id)));
-
-        return executor.executeTask(task);
     }
 }

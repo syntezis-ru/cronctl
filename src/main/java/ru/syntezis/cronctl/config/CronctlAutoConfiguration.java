@@ -1,16 +1,24 @@
 package ru.syntezis.cronctl.config;
 
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.Role;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
+import org.springframework.scheduling.config.TaskSchedulerRouter;
 import ru.syntezis.cronctl.bfpp.CronctlConfigurationContributor;
 import ru.syntezis.cronctl.bpp.ScheduleAnnotationBeanPostProcessor;
 import ru.syntezis.cronctl.config.security.CronctlSecurityConfiguration;
@@ -18,12 +26,14 @@ import ru.syntezis.cronctl.config.security.CronctlSwaggerSecurityConfiguration;
 import ru.syntezis.cronctl.config.swagger.CronctlSwaggerConfiguration;
 import ru.syntezis.cronctl.core.Cronctl;
 import ru.syntezis.cronctl.core.NextExecutionTimeResolver;
+import ru.syntezis.cronctl.core.StateToggler;
 import ru.syntezis.cronctl.core.TaskRegistry;
 import ru.syntezis.cronctl.core.async.AsyncTaskExecutor;
 import ru.syntezis.cronctl.core.async.ExecutionRegistry;
 import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.filter.MethodsFilter;
 import ru.syntezis.cronctl.filter.ScanModeFilter;
+import ru.syntezis.cronctl.presentation.controller.CronctlExceptionResolver;
 import ru.syntezis.cronctl.processor.ScheduledBeanProcessor;
 import ru.syntezis.cronctl.properties.CronctlProperties;
 
@@ -109,16 +119,43 @@ public class CronctlAutoConfiguration {
     /** Registers the main cronctl facade that exposes the public API for listing and executing tasks. */
     @Bean
     @Role(BeanDefinition.ROLE_APPLICATION)
-    public Cronctl cronctl(TaskRegistry registry, BlockingTaskExecutor executor) {
-        return new Cronctl(registry, executor);
+    public Cronctl cronctl(TaskRegistry registry) {
+        return new Cronctl(registry);
     }
 
-    /** Registers the resolver that computes next execution times for cron-based tasks. */
+    /** Registers the resolver that computes the next execution times for cron-based tasks. */
     @Bean
     @Role(BeanDefinition.ROLE_SUPPORT)
     public NextExecutionTimeResolver cronctlNextExecutionTimeResolver(
-            ObjectProvider<ScheduledTaskHolder> scheduledTaskHolderProvider) {
-        return new NextExecutionTimeResolver(scheduledTaskHolderProvider);
+            ObjectProvider<ScheduledTaskHolder> scheduledTaskHolderProvider, StateToggler stateToggler) {
+        return new NextExecutionTimeResolver(scheduledTaskHolderProvider, stateToggler);
+    }
+
+    @Bean
+    @Role(BeanDefinition.ROLE_SUPPORT)
+    public StateToggler cronctlStateToggler(ObjectProvider<ScheduledTaskHolder> scheduledTaskHolderProvider,
+                                            BeanFactory beanFactory) {
+        TaskSchedulerRouter taskSchedulerRouter = new TaskSchedulerRouter();
+        taskSchedulerRouter.setBeanName("cronctlTaskSchedulerRouter");
+        taskSchedulerRouter.setBeanFactory(beanFactory);
+        return new StateToggler(scheduledTaskHolderProvider, taskSchedulerRouter);
+    }
+
+    /** Registers HTTP status mapping for cronctl task-management exceptions. */
+    @Bean
+    @Role(BeanDefinition.ROLE_SUPPORT)
+    public CronctlExceptionResolver cronctlExceptionResolver() {
+        CronctlExceptionResolver exceptionResolver = new CronctlExceptionResolver();
+        exceptionResolver.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return exceptionResolver;
+    }
+
+    /** Serves the optional operator UI assets under the configured API base path. */
+    @Bean
+    @Role(BeanDefinition.ROLE_SUPPORT)
+    @ConditionalOnClass(name = "org.thymeleaf.spring6.SpringTemplateEngine")
+    public CronctlUiWebMvcConfigurer cronctlUiWebMvcConfigurer(CronctlProperties properties) {
+        return new CronctlUiWebMvcConfigurer(properties);
     }
 
     /** Registers the in-memory registry that tracks async execution state. */

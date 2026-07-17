@@ -30,5 +30,4 @@ public interface TaskMapper {
         dto.setNextExecutionAt(resolver.computeNextExecutionAt(task));
         return dto;
     }
-
 }

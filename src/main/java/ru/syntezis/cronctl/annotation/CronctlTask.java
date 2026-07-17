@@ -2,7 +2,11 @@ package ru.syntezis.cronctl.annotation;
 
 import org.springframework.core.annotation.AliasFor;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -19,10 +23,16 @@ import java.util.concurrent.TimeUnit;
 @Documented
 public @interface CronctlTask {
 
+    /** Disable the execution timeout for this task. */
+    long NO_TIMEOUT = -1L;
+
+    /** Inherit the global {@code cronctl.executor.timeout-seconds} setting. */
+    long USE_GLOBAL_TIMEOUT = 0L;
+
     /**
      * Display label shown in the API response. Defaults to the method name when blank.
      *
-     * @return the display label, or empty string to use the method name
+     * @return the display label or empty string to use the method name
      */
     @AliasFor("label")
     String value() default "";
@@ -30,7 +40,7 @@ public @interface CronctlTask {
     /**
      * Display label shown in the API response. Defaults to the method name when blank.
      *
-     * @return the display label, or empty string to use the method name
+     * @return the display label or empty string to use the method name
      */
     @AliasFor("value")
     String label() default "";
@@ -43,26 +53,29 @@ public @interface CronctlTask {
     String description() default "";
 
     /**
-     * Logical group for categorisation. Defaults to {@code "default"} when blank.
+     * Logical group for categorization. Defaults to {@code "default"} when blank.
      *
      * @return the group name
      */
     String group() default "default";
 
     /**
-     * Arbitrary tags for filtering or categorisation.
+     * Arbitrary tags for filtering or categorization.
      *
      * @return array of tags
      */
     String[] tags() default {};
 
     /**
-     * Task-level execution timeout. {@code 0} means use the global
-     * {@code cronctl.executor.timeout-seconds} setting.
+     * Task-level execution timeout.
      *
-     * @return the timeout value, or {@code 0} to use the global default
+     * <p>{@link #USE_GLOBAL_TIMEOUT} ({@code 0}) inherits
+     * {@code cronctl.executor.timeout-seconds}, {@link #NO_TIMEOUT} ({@code -1}) disables
+     * the timeout, and a positive value defines a task-specific timeout.
+     *
+     * @return the timeout value, {@link #USE_GLOBAL_TIMEOUT}, or {@link #NO_TIMEOUT}
      */
-    long timeout() default 0;
+    long timeout() default USE_GLOBAL_TIMEOUT;
 
     /**
      * Time unit for {@link #timeout()}.
@@ -70,6 +83,13 @@ public @interface CronctlTask {
      * @return the time unit for the timeout value
      */
     TimeUnit timeUnit() default TimeUnit.SECONDS;
+
+    /**
+     * Allows toggling the task on and off.
+     *
+     * @return true if toggling is enabled
+     */
+    boolean togglingEnabled() default false;
 
     /**
      * Prevents the annotated {@code @Scheduled} method from being registered in cronctl.

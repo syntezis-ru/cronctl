@@ -55,6 +55,10 @@ public class CronctlConfiguration {
     @Nullable
     private final String swaggerPathsToMatch;
 
+    /** Overrides {@code cronctl.ui.enabled}. */
+    @Nullable
+    private final Boolean uiEnabled;
+
     /** Overrides {@code cronctl.scan.type}. */
     @Nullable
     private final ScanType scanType;

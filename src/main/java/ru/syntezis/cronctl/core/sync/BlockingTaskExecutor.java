@@ -24,7 +24,7 @@ public class BlockingTaskExecutor {
      * Invokes the {@code @Scheduled} method referenced by the given task.
      *
      * <p>The method is called synchronously on the current thread.
-     * If the method throws an exception it is caught and recorded in the returned details
+     * If the method throws an exception, it is caught and recorded in the returned details
      * with status {@link ru.syntezis.cronctl.enums.TaskExecutionStatus#FAILED}; it is never rethrown.
      *
      * @param task task whose underlying method should be executed

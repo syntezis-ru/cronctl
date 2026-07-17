@@ -65,7 +65,7 @@
 
     <properties>
         <!-- Project revision -->
-        <revision>0.0.3</revision>
+        <revision>0.0.4</revision>
 
         <!-- System properties -->
         <java.version>17</java.version>
@@ -142,6 +142,13 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

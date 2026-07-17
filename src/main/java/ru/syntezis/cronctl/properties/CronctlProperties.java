@@ -38,6 +38,9 @@ public class CronctlProperties {
     @NestedConfigurationProperty
     private Swagger swagger = new Swagger();
 
+    @NestedConfigurationProperty
+    private Ui ui = new Ui();
+
     /**
      * Async executor configuration.
      */
@@ -54,7 +57,8 @@ public class CronctlProperties {
 
         /**
          * Default execution timeout in seconds. {@code 0} disables the timeout.
-         * Can be overridden per task via {@code @CronctlTask(timeout=...)}.
+         * A task timeout of {@code 0} inherits this value, {@code -1} disables the timeout
+         * for that task, and a positive value overrides this value.
          */
         private long timeoutSeconds = 60;
 
@@ -119,6 +123,19 @@ public class CronctlProperties {
 
         /** Ant-style path pattern used to include endpoints in the cronctl Swagger group. */
         private String pathsToMatch = "/api/cronctl/**";
+
+    }
+
+    /**
+     * Operator UI configuration.
+     */
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Ui {
+
+        /** When {@code false}, the cronctl operator UI is not exposed. */
+        private boolean enabled = true;
 
     }
 }

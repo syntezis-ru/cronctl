@@ -2,8 +2,6 @@ package ru.syntezis.cronctl.core;
 
 import io.vavr.control.Try;
 import org.apache.commons.lang3.tuple.Pair;
-import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.jeasy.random.EasyRandom;
 import org.jeasy.random.EasyRandomParameters;
 import org.junit.jupiter.api.AfterEach;
@@ -15,16 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
-import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
-import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
-import ru.syntezis.cronctl.enums.TaskExecutionStatus;
-import ru.syntezis.cronctl.exception.TaskNotFoundException;
 import ru.syntezis.cronctl.util.Repeats;
-import ru.syntezis.cronctl.util.ScheduleUtils;
-import ru.syntezis.cronctl.util.condition.Conditions;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -32,8 +23,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CronctlTest {
@@ -41,17 +30,11 @@ class CronctlTest {
     @Spy
     private final TaskRegistry registry = new TaskRegistry();
 
-    @Spy
-    private final BlockingTaskExecutor executor = new BlockingTaskExecutor();
-
     @InjectMocks
     private Cronctl underTest;
 
     private static final EasyRandom random = new EasyRandom(new EasyRandomParameters()
-            .randomize(Method.class, () ->
-                    Try.of(() -> Object.class.getDeclaredMethod("toString"))
-                            .get()
-            )
+            .randomize(Method.class, () -> Try.of(() -> Object.class.getDeclaredMethod("toString")).get())
             .excludeField(f -> f.getName().equals("scheduledMethodId"))
     );
 
@@ -207,85 +190,6 @@ class CronctlTest {
         // Then
         assertThat(actual)
                 .isEmpty();
-    }
-
-    @Test
-    void executeTaskByID_taskExecutedSuccessfully_TaskExecutedAndReturnedExecutionDetails() {
-        // Given
-        UUID scheduledMethodId = UUID.randomUUID();
-        Task task = random.nextObject(Task.class);
-        task.getDetails().setId(scheduledMethodId);
-
-        registry.add(scheduledMethodId, task);
-
-        // When
-        final TaskExecutionDetails actual = underTest.executeTaskByID(scheduledMethodId);
-
-        // Then
-        verify(executor).executeTask(task);
-
-        assertThat(actual)
-                .hasNoNullFieldsOrPropertiesExcept("failDetails")
-                .hasFieldOrPropertyWithValue("scheduledMethodId", scheduledMethodId)
-                .hasFieldOrPropertyWithValue("status", TaskExecutionStatus.SUCCEEDED)
-                .satisfies(new Conditions.TaskExecutionDetailsUUIDCondition());
-    }
-
-    @Test
-    void executeTaskByID_taskDidNotExecutedSuccessfully_TaskExecutedAndReturnedExecutionDetails() throws NoSuchMethodException {
-        // Given
-        UUID scheduledMethodId = UUID.randomUUID();
-        SampleScheduledThrowingClass bean = new SampleScheduledThrowingClass();
-        Method method = SampleScheduledThrowingClass.class.getDeclaredMethod("throwingJob");
-        Task task = Task.builder()
-                .details(ScheduledMethodDetails.builder()
-                        .id(scheduledMethodId)
-                        .methodName("throwingJob")
-                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                        .build()
-                )
-                .reference(ScheduledMethodReference.builder()
-                        .beanName("")
-                        .bean(bean)
-                        .method(method)
-                        .build()
-                )
-                .build();
-
-        registry.add(scheduledMethodId, task);
-
-        // When
-        final TaskExecutionDetails actual = underTest.executeTaskByID(scheduledMethodId);
-
-        // Then
-        verify(executor).executeTask(task);
-
-        assertThat(actual)
-                .hasNoNullFieldsOrProperties()
-                .hasFieldOrPropertyWithValue("scheduledMethodId", scheduledMethodId)
-                .hasFieldOrPropertyWithValue("status", TaskExecutionStatus.FAILED)
-                .satisfies(new Conditions.TaskExecutionDetailsUUIDCondition())
-                .extracting(TaskExecutionDetails::getFailDetails)
-                .hasNoNullFieldsOrProperties()
-                .hasFieldOrPropertyWithValue("message", "Error")
-                .extracting(TaskExecutionDetails.FailDetails::getThrowable)
-                .asInstanceOf(InstanceOfAssertFactories.THROWABLE)
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Error");
-    }
-
-    @Test
-    void executeTaskByID_TaskNotFound_ThrowsTaskNotFoundException() {
-        // Given
-        registry.clear();
-        UUID id = UUID.randomUUID();
-
-        // When
-        ThrowingCallable invoke = () -> underTest.executeTaskByID(id);
-
-        // Then
-        assertThatThrownBy(invoke)
-                .isInstanceOf(TaskNotFoundException.class);
     }
 
     @AfterEach
