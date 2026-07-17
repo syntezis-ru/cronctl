@@ -2,6 +2,7 @@ package ru.syntezis.cronctl.core.async;
 
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
 import ru.syntezis.cronctl.domain.execution.TaskExecution;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -9,7 +10,13 @@ import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 import ru.syntezis.cronctl.properties.CronctlProperties;
 
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -21,9 +28,10 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>The effective timeout per task is resolved as follows:
  * <ol>
- *   <li>If the task carries a non-zero {@code @CronctlTask(timeout=...)} — that value is used.</li>
- *   <li>Otherwise, {@code cronctl.executor.timeout-seconds} from configuration is used.</li>
- *   <li>If both are {@code 0}, no timeout is applied.</li>
+ *   <li>{@code @CronctlTask(timeout=USE_GLOBAL_TIMEOUT)} ({@code 0}) uses
+ *       {@code cronctl.executor.timeout-seconds}.</li>
+ *   <li>{@code @CronctlTask(timeout=NO_TIMEOUT)} ({@code -1}) disables the timeout.</li>
+ *   <li>A positive task timeout overrides the global value.</li>
  * </ol>
  */
 @Slf4j
@@ -72,9 +80,9 @@ public class AsyncTaskExecutor {
         TaskExecution execution = new TaskExecution(task.getId());
         executionRegistry.register(execution);
 
-        long effectiveTimeout = task.getTimeoutSeconds() > 0
-                ? task.getTimeoutSeconds()
-                : defaultTimeoutSeconds;
+        long effectiveTimeout = task.getTimeoutSeconds() == CronctlTask.USE_GLOBAL_TIMEOUT
+                ? defaultTimeoutSeconds
+                : task.getTimeoutSeconds();
 
         Future<?> future = threadPool.submit(() -> executeAsync(execution, task));
         execution.setFuture(future);

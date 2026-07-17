@@ -40,7 +40,8 @@ public class ReportScheduler {
     @CronctlTask(
             label = "Weekly Report",
             description = "Generates the weekly analytics report every Monday at 9:00",
-            group = "reports"
+            group = "reports",
+            togglingEnabled = true
     )
     @Scheduled(cron = "0 0 9 * * MON")
     public void generateWeeklyReport() {

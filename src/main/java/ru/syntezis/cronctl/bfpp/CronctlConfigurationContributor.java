@@ -51,6 +51,7 @@ public class CronctlConfigurationContributor implements BeanFactoryPostProcessor
         putIfPresent(map, "cronctl.swagger.public-access", config.getSwaggerPublicAccess());
         putIfPresent(map, "cronctl.swagger.group", config.getSwaggerGroup());
         putIfPresent(map, "cronctl.swagger.paths-to-match", config.getSwaggerPathsToMatch());
+        putIfPresent(map, "cronctl.ui.enabled", config.getUiEnabled());
         putIfPresent(map, "cronctl.scan.type", Optional.ofNullable(config.getScanType()).map(ScanType::name).orElse(null));
         putIfPresent(map, "cronctl.scan.base-packages", Optional.ofNullable(config.getScanBasePackages()).filter(p -> !p.isEmpty()).orElse(null));
         putIfPresent(map, "cronctl.executor.thread-pool-size", config.getExecutorThreadPoolSize());

@@ -36,8 +36,17 @@ public class TaskResponseDto {
     @Schema(description = "Tags for categorization and filtering", example = "[\"billing\", \"critical\"]")
     private List<String> tags;
 
+    @JsonProperty("enabled")
+    @Schema(description = "Whether automatic scheduled execution is enabled", example = "true")
+    private boolean enabled;
+
+    @JsonProperty("toggling_enabled")
+    @Schema(description = "Whether this task can be enabled and disabled through cronctl", example = "true")
+    private boolean togglingEnabled;
+
     @JsonProperty("timeout_seconds")
-    @Schema(description = "Task-level execution timeout in seconds; 0 means use the global config", example = "30")
+    @Schema(description = "Task-level execution timeout in seconds: -1 disables the timeout, "
+            + "0 inherits the global config, and a positive value overrides the global config", example = "30")
     private long timeoutSeconds;
 
     @JsonProperty("details")

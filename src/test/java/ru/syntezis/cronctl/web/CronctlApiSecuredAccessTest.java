@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.UUID;
 
@@ -30,6 +31,30 @@ class CronctlApiSecuredAccessTest {
     void executeTask_SecuredAccess_NoAuth_Returns403() throws Exception {
         mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void disableTask_SecuredAccess_NoAuth_Returns403() throws Exception {
+        // Given
+        UUID taskId = UUID.randomUUID();
+
+        // When
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", taskId));
+
+        // Then
+        actual.andExpect(status().isForbidden());
+    }
+
+    @Test
+    void enableTask_SecuredAccess_NoAuth_Returns403() throws Exception {
+        // Given
+        UUID taskId = UUID.randomUUID();
+
+        // When
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", taskId));
+
+        // Then
+        actual.andExpect(status().isForbidden());
     }
 
     @Test

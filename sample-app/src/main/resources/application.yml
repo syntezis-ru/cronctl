@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: sample-app
+  task:
+    scheduling:
+      pool:
+        size: 4
 
 schedule:
   cron:
@@ -16,6 +20,8 @@ schedule:
 # AUTO (default): all @Scheduled methods are registered.
 # Methods annotated with @CronctlTask.Exclude are skipped.
 cronctl:
+  ui:
+    enabled: true
   scan:
     type: AUTO
 

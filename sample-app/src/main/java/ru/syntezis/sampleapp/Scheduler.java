@@ -21,7 +21,8 @@ public class Scheduler {
             label = "Simple Job",
             description = "Runs every 5 minutes, reads cron from properties",
             group = "reporting",
-            tags = {"reporting", "scheduled"}
+            tags = {"reporting", "scheduled"},
+            togglingEnabled = true
     )
     @Scheduled(cron = "${schedule.cron.job-a}")
     public void runSimpleJob() {
@@ -32,7 +33,8 @@ public class Scheduler {
             label = "Heavy Job",
             description = "Long-running job, sleeps 6 minutes to simulate work",
             group = "processing",
-            tags = {"processing", "heavy", "critical"}
+            tags = {"processing", "heavy", "critical"},
+            timeout = CronctlTask.NO_TIMEOUT
     )
     @Scheduled(fixedRate = 10L, timeUnit = TimeUnit.MINUTES)
     public void runHeavyJob() throws InterruptedException {
