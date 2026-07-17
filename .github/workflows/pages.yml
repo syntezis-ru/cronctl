@@ -1,0 +1,62 @@
+name: Deploy operator UI demo
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - ".github/workflows/pages.yml"
+      - "demo/**"
+      - "docs/favicon.svg"
+      - "src/main/resources/templates/cronctl/index.html"
+      - "src/main/resources/META-INF/cronctl/ui/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and deploy demo
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Verify demo transport
+        run: |
+          node --check demo/cronctl-demo.js
+          node --check src/main/resources/META-INF/cronctl/ui/cronctl-ui.js
+          node --test demo/cronctl-demo.test.js
+
+      - name: Assemble static demo
+        run: |
+          mkdir -p _site/assets
+          cp src/main/resources/templates/cronctl/index.html _site/index.html
+          cp src/main/resources/META-INF/cronctl/ui/cronctl-ui.css _site/assets/cronctl-ui.css
+          cp src/main/resources/META-INF/cronctl/ui/cronctl-ui.js _site/assets/cronctl-ui.js
+          cp demo/cronctl-demo.js _site/assets/cronctl-demo.js
+          cp docs/favicon.svg _site/favicon.svg
+          touch _site/.nojekyll
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

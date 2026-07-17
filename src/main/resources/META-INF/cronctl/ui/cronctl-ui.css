@@ -173,6 +173,51 @@ a {
     gap: 10px;
 }
 
+.demo-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 18px;
+    padding: 11px 12px 11px 15px;
+    border: 1px solid #c7d7eb;
+    border-left: 4px solid var(--blueprint);
+    border-radius: 11px;
+    background: rgba(232, 240, 251, 0.72);
+    color: #294b77;
+}
+
+.demo-banner__copy {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    min-width: 0;
+}
+
+.demo-banner__label {
+    flex: 0 0 auto;
+    font-family: var(--font-data);
+    font-size: 0.68rem;
+    font-weight: 780;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.demo-banner p {
+    margin: 0;
+    overflow: hidden;
+    color: #536f91;
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.demo-banner .button {
+    flex: 0 0 auto;
+    min-height: 32px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
 .connection-state {
     gap: 8px;
     min-height: 36px;
@@ -1168,6 +1213,25 @@ select:hover {
 
     .workspace {
         padding-top: 20px;
+    }
+
+    .demo-banner {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .demo-banner__copy {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .demo-banner p {
+        overflow: visible;
+        line-height: 1.45;
+        text-overflow: clip;
+        white-space: normal;
     }
 
     .overview {

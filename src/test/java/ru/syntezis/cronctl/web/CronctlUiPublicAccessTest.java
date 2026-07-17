@@ -33,7 +33,9 @@ class CronctlUiPublicAccessTest {
                 .contains("What runs next")
                 .contains("data-api-base-path=\"/api/cronctl\"")
                 .contains("/api/cronctl/ui/assets/cronctl-ui.css")
-                .contains("/api/cronctl/ui/assets/cronctl-ui.js");
+                .contains("/api/cronctl/ui/assets/cronctl-ui.js")
+                .doesNotContain("cronctl-demo.js")
+                .doesNotContain("Simulated scheduler");
     }
 
     @Test
@@ -71,6 +73,7 @@ class CronctlUiPublicAccessTest {
         assertThat(actual.getResponse().getContentAsString())
                 .contains("execute-async")
                 .contains("interrupt=${confirmation.interrupt}")
-                .contains("Running or overdue");
+                .contains("Running or overdue")
+                .contains("window.cronctlTransport");
     }
 }

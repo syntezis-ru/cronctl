@@ -179,7 +179,11 @@ When Thymeleaf is present, cronctl exposes an operator dashboard at:
 http://localhost:8080/api/cronctl/ui
 ```
 
-![cronctl operator UI](docs/images/cronctl-operator-ui.png)
+[Open the interactive operator UI demo](https://syntezis-ru.github.io/cronctl/).
+The demo uses a simulated scheduler in the browser, so pause, resume, run, and
+cancel actions do not invoke server-side jobs.
+
+[![cronctl operator UI](docs/images/cronctl-operator-ui.png)](https://syntezis-ru.github.io/cronctl/)
 
 The path follows `cronctl.api.base-path`, so a base path of `/internal/scheduler`
 serves the dashboard at `/internal/scheduler/ui`. It uses the same access policy as

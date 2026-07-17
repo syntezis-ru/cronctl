@@ -5,6 +5,8 @@
     const activeStatuses = new Set(["PENDING", "RUNNING"]);
     const terminalFailureStatuses = new Set(["FAILED", "TIMED_OUT"]);
     const maximumExecutions = 100;
+    const transport = window.cronctlTransport;
+    const connectionLabel = transport?.connectionLabel || "Live";
 
     const elements = {
         cadenceRail: document.querySelector("#cadence-rail"),
@@ -57,6 +59,10 @@
     }
 
     async function request(path, options = {}) {
+        if (typeof transport?.request === "function") {
+            return transport.request(path, options);
+        }
+
         const response = await fetch(apiBasePath + path, {
             credentials: "same-origin",
             headers: {"Accept": "application/json", ...(options.headers || {})},
@@ -112,7 +118,7 @@
             if (rejected) {
                 throw rejected.reason;
             }
-            setConnection("online", "Live");
+            setConnection("online", connectionLabel);
             hideError();
             if (manual) {
                 showToast("Schedule refreshed", "Tasks and executions are up to date.");
@@ -133,7 +139,7 @@
             if (!document.hidden) {
                 try {
                     await loadTasks(true);
-                    setConnection("online", "Live");
+                    setConnection("online", connectionLabel);
                 } catch (error) {
                     handleLoadError(error);
                 }
@@ -150,7 +156,7 @@
             if (!document.hidden) {
                 try {
                     await loadTasks(true);
-                    setConnection("online", "Live");
+                    setConnection("online", connectionLabel);
                 } catch (error) {
                     handleLoadError(error);
                 }
@@ -168,7 +174,7 @@
             if (!document.hidden) {
                 try {
                     await loadExecutions(true);
-                    setConnection("online", "Live");
+                    setConnection("online", connectionLabel);
                 } catch (error) {
                     handleLoadError(error);
                 }
