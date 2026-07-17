@@ -13,9 +13,9 @@
 
 [![CI](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/ci.yml)
 [![Qodana](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml/badge.svg)](https://github.com/syntezis-ru/cronctl/actions/workflows/qodana_code_quality.yml)
-[![codecov](https://codecov.io/gh/syntezis-ru/cronctl/branch/master/graph/badge.svg)](https://codecov.io/gh/syntezis-ru/cronctl)
-[![Last Update](https://img.shields.io/maven-central/last-update/ru.syntezis/cronctl-spring-boot-starter)](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter)
+
 [![Last Commit](https://img.shields.io/github/last-commit/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/commits/master)
+[![GitHub Issues](https://img.shields.io/github/issues/syntezis-ru/cronctl?style=flat-square)](https://github.com/syntezis-ru/cronctl/issues)
 
 A Spring Boot starter that exposes a REST API for viewing and manually triggering
 methods annotated with `@Scheduled`.
@@ -41,7 +41,7 @@ No additional repository configuration is required.
 <dependency>
     <groupId>ru.syntezis</groupId>
     <artifactId>cronctl-spring-boot-starter</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
 </dependency>
 ```
 
