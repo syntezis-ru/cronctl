@@ -20,6 +20,8 @@ schedule:
 # AUTO (default): all @Scheduled methods are registered.
 # Methods annotated with @CronctlTask.Exclude are skipped.
 cronctl:
+  history:
+    node-id: sample-app-local
   ui:
     enabled: true
   scan:

@@ -44,7 +44,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
         registry = new TaskRegistry();
         methodsFilter = new MethodsFilter();
         scanModeFilter = new ScanModeFilter(new CronctlProperties.Scan());
-        processor = new ScheduledBeanProcessor();
+        processor = new ScheduledBeanProcessor("test-app");
         underTest = new ScheduleAnnotationBeanPostProcessor(registry, methodsFilter, scanModeFilter, processor);
     }
 
@@ -64,7 +64,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
         Task task = tasks.get(0);
 
         assertThat(task)
-                .hasNoNullFieldsOrProperties()
+                .hasNoNullFieldsOrPropertiesExcept("automaticTrackingMessage")
                 .extracting(Task::getDetails)
                 .hasFieldOrPropertyWithValue("methodName", "doSomething")
                 .extracting(ScheduledMethodDetails::getSchedule)
@@ -72,7 +72,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
                 .hasFieldOrPropertyWithValue("fixedRate", 1000L);
 
         assertThat(task)
-                .hasNoNullFieldsOrProperties()
+                .hasNoNullFieldsOrPropertiesExcept("automaticTrackingMessage")
                 .extracting(Task::getReference)
                 .hasFieldOrPropertyWithValue("method", bean.getClass().getDeclaredMethod("doSomething"))
                 .hasFieldOrPropertyWithValue("bean", bean);
@@ -100,7 +100,7 @@ class ScheduleAnnotationBeanPostProcessorTest {
                 .allSatisfy(d ->
                         assertThat(d)
                                 .hasNoNullFieldsOrProperties()
-                                .satisfies(new Conditions.ScheduledMethodDetailsUUIDCondition())
+                                .satisfies(new Conditions.ScheduledMethodDetailsTaskKeyCondition())
                                 .satisfies(new Conditions.RandomGeneratedStringCondition())
                                 .extracting(ScheduledMethodDetails::getSchedule)
                                 .satisfies(new Conditions.FixedRateCondition())

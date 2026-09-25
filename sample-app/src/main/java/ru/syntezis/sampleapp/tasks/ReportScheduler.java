@@ -38,6 +38,7 @@ public class ReportScheduler {
     }
 
     @CronctlTask(
+            id = "reports.weekly",
             label = "Weekly Report",
             description = "Generates the weekly analytics report every Monday at 9:00",
             group = "reports",

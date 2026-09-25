@@ -9,9 +9,10 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.core.Cronctl;
-import ru.syntezis.cronctl.core.async.ExecutionRegistry;
+import ru.syntezis.cronctl.core.execution.ExecutionStore;
 import ru.syntezis.cronctl.domain.execution.TaskExecution;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 
@@ -19,7 +20,10 @@ import java.util.UUID;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.awaitility.Awaitility.await;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,130 +38,174 @@ class AsyncExecutionControllerTest {
     private Cronctl cronctl;
 
     @Autowired
-    private ExecutionRegistry executionRegistry;
+    private ExecutionStore executionStore;
 
     @Test
     void submitExecution_KnownTask_Returns202WithExecutionId() throws Exception {
         // Given
-        UUID taskId = fastTaskId();
+        final String taskKey = fastTaskKey();
 
-        // When / Then
-        mockMvc.perform(post("/api/cronctl/tasks/{taskId}/executions", taskId))
-                .andExpect(status().isAccepted())
+        // When
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/executions", taskKey));
+
+        // Then
+        actual.andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.execution_id").isNotEmpty())
-                .andExpect(jsonPath("$.task_id").value(taskId.toString()))
+                .andExpect(jsonPath("$.task_key").value(taskKey))
+                .andExpect(jsonPath("$.source").value("MANUAL_ASYNC"))
                 .andExpect(jsonPath("$.status").isNotEmpty())
-                .andExpect(jsonPath("$.submitted_at").isNotEmpty());
+                .andExpect(jsonPath("$.created_at").isNotEmpty());
     }
 
     @Test
-    void submitExecution_UnknownTaskId_Returns404() throws Exception {
-        mockMvc.perform(post("/api/cronctl/tasks/{taskId}/executions", UUID.randomUUID()))
-                .andExpect(status().isNotFound());
+    void submitExecution_UnknownTaskKey_Returns404() throws Exception {
+        // Given
+        final String taskKey = "missing.task";
+
+        // When
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/executions", taskKey));
+
+        // Then
+        actual.andExpect(status().isNotFound());
     }
 
     @Test
     void getExecution_ExistingExecution_Returns200WithStatus() throws Exception {
         // Given
-        UUID executionId = submitAndExtractExecutionId(fastTaskId());
+        UUID executionId = submitAndExtractExecutionId(fastTaskKey());
 
-        // When / Then
-        mockMvc.perform(get("/api/cronctl/executions/{executionId}", executionId))
-                .andExpect(status().isOk())
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/executions/{executionId}", executionId));
+
+        // Then
+        actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.execution_id").value(executionId.toString()))
                 .andExpect(jsonPath("$.status").isNotEmpty());
     }
 
     @Test
     void getExecution_UnknownExecutionId_Returns404() throws Exception {
-        mockMvc.perform(get("/api/cronctl/executions/{executionId}", UUID.randomUUID()))
-                .andExpect(status().isNotFound());
+        // Given
+        final UUID executionId = UUID.randomUUID();
+
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/executions/{executionId}", executionId));
+
+        // Then
+        actual.andExpect(status().isNotFound());
     }
 
     @Test
     void cancelExecution_UnknownExecutionId_Returns404() throws Exception {
-        mockMvc.perform(delete("/api/cronctl/executions/{executionId}", UUID.randomUUID()))
-                .andExpect(status().isNotFound());
+        // Given
+        final UUID executionId = UUID.randomUUID();
+
+        // When
+        final ResultActions actual = mockMvc.perform(delete("/api/cronctl/executions/{executionId}", executionId));
+
+        // Then
+        actual.andExpect(status().isNotFound());
     }
 
     @Test
     void cancelExecution_TerminalExecution_Returns409() throws Exception {
-        // Given — submit fast task and wait for it to complete
-        UUID executionId = submitAndExtractExecutionId(fastTaskId());
-        TaskExecution execution = executionRegistry.getById(executionId).orElseThrow();
+        // Given
+        UUID executionId = submitAndExtractExecutionId(fastTaskKey());
+        TaskExecution execution = executionStore.findById(executionId).orElseThrow();
         await().atMost(3, SECONDS).until(execution::isTerminal);
 
-        // When / Then
-        mockMvc.perform(delete("/api/cronctl/executions/{executionId}", executionId))
-                .andExpect(status().isConflict());
+        // When
+        final ResultActions actual = mockMvc.perform(delete("/api/cronctl/executions/{executionId}", executionId));
+
+        // Then
+        actual.andExpect(status().isConflict());
     }
 
     @Test
     void cancelExecution_ActiveExecution_Returns204() throws Exception {
-        // Given — submit blocking task
-        UUID blockingTaskId = findTaskIdByLabel("Async Controller Test Blocking Task");
-        UUID executionId = submitAndExtractExecutionId(blockingTaskId);
+        // Given
+        String blockingTaskKey = findTaskKeyByLabel("Async Controller Test Blocking Task");
+        UUID executionId = submitAndExtractExecutionId(blockingTaskKey);
 
-        // When / Then
-        mockMvc.perform(delete("/api/cronctl/executions/{executionId}", executionId))
-                .andExpect(status().isNoContent());
+        // When
+        final ResultActions actual = mockMvc.perform(delete("/api/cronctl/executions/{executionId}", executionId));
+
+        // Then
+        actual.andExpect(status().isNoContent());
     }
 
     @Test
     void listExecutions_NoFilter_Returns200WithExecutionsArray() throws Exception {
-        // Given — submit any task so the list is non-empty
-        submitAndExtractExecutionId(fastTaskId());
+        // Given
+        submitAndExtractExecutionId(fastTaskKey());
 
-        // When / Then
-        mockMvc.perform(get("/api/cronctl/executions"))
-                .andExpect(status().isOk())
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/executions"));
+
+        // Then
+        actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.executions").isArray())
-                .andExpect(jsonPath("$.total").isNumber());
+                .andExpect(jsonPath("$.total").isNumber())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(50))
+                .andExpect(jsonPath("$.has_next").isBoolean());
     }
 
     @Test
     void listExecutions_FilterByRunningStatus_Returns200WithMatchingExecutions() throws Exception {
-        // Given — submit a blocking task (stays in RUNNING)
-        UUID blockingTaskId = findTaskIdByLabel("Async Controller Test Blocking Task");
-        UUID executionId = submitAndExtractExecutionId(blockingTaskId);
-        TaskExecution execution = executionRegistry.getById(executionId).orElseThrow();
-        await().atMost(3, SECONDS).until(() -> execution.getState() == TaskExecutionStatus.RUNNING);
+        // Given
+        String blockingTaskKey = findTaskKeyByLabel("Async Controller Test Blocking Task");
+        UUID executionId = submitAndExtractExecutionId(blockingTaskKey);
+        TaskExecution execution = executionStore.findById(executionId).orElseThrow();
+        await().atMost(3, SECONDS).until(() -> execution.getStatus() == TaskExecutionStatus.RUNNING);
 
-        // When / Then
-        mockMvc.perform(get("/api/cronctl/executions").param("status", "RUNNING"))
-                .andExpect(status().isOk())
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/executions")
+                .param("status", "RUNNING")
+                .param("source", "MANUAL_ASYNC")
+                .param("taskKey", blockingTaskKey)
+                .param("page", "0")
+                .param("size", "1"));
+
+        // Then
+        actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.executions").isArray())
-                .andExpect(jsonPath("$.total").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+                .andExpect(jsonPath("$.executions[0].source").value("MANUAL_ASYNC"))
+                .andExpect(jsonPath("$.executions[0].task_key").value(blockingTaskKey))
+                .andExpect(jsonPath("$.total").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.size").value(1));
     }
 
     @Test
     void listExecutions_FilterBySucceededStatus_Returns200WithOnlySucceededExecutions() throws Exception {
-        // Given — submit a fast task and wait for it to succeed
-        UUID executionId = submitAndExtractExecutionId(fastTaskId());
-        TaskExecution execution = executionRegistry.getById(executionId).orElseThrow();
+        // Given
+        UUID executionId = submitAndExtractExecutionId(fastTaskKey());
+        TaskExecution execution = executionStore.findById(executionId).orElseThrow();
         await().atMost(3, SECONDS).until(execution::isTerminal);
 
-        // When / Then
-        mockMvc.perform(get("/api/cronctl/executions").param("status", "SUCCEEDED"))
-                .andExpect(status().isOk())
+        // When
+        final ResultActions actual = mockMvc.perform(get("/api/cronctl/executions").param("status", "SUCCEEDED"));
+
+        // Then
+        actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.executions").isArray())
-                .andExpect(jsonPath("$.total").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)));
+                .andExpect(jsonPath("$.total").value(greaterThanOrEqualTo(1)));
     }
 
-    private UUID fastTaskId() {
-        return findTaskIdByLabel("scheduledTask");
+    private String fastTaskKey() {
+        return findTaskKeyByLabel("scheduledTask");
     }
 
-    private UUID findTaskIdByLabel(String label) {
+    private String findTaskKeyByLabel(String label) {
         return cronctl.getAllTasks().stream()
                 .filter(task -> label.equals(task.getLabel()))
                 .findFirst()
                 .orElseThrow()
-                .getId();
+                .getTaskKey();
     }
 
-    private UUID submitAndExtractExecutionId(UUID taskId) throws Exception {
-        String response = mockMvc.perform(post("/api/cronctl/tasks/{taskId}/executions", taskId))
+    private UUID submitAndExtractExecutionId(String taskKey) throws Exception {
+        String response = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/executions", taskKey))
                 .andExpect(status().isAccepted())
                 .andReturn().getResponse().getContentAsString();
         return UUID.fromString(JsonPath.read(response, "$.execution_id"));

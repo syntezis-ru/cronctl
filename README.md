@@ -3,6 +3,8 @@
   <h1>cronctl-spring-boot-starter</h1>
 </div>
 
+**English** | [Русский](README_ru.md)
+
 [![Maven Central](https://img.shields.io/maven-central/v/ru.syntezis/cronctl-spring-boot-starter)](https://central.sonatype.com/artifact/ru.syntezis/cronctl-spring-boot-starter)
 [![Javadoc](https://javadoc.io/badge2/ru.syntezis/cronctl-spring-boot-starter/javadoc.svg)](https://javadoc.io/doc/ru.syntezis/cronctl-spring-boot-starter)
 [![GitHub Release](https://img.shields.io/github/v/release/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/releases/latest)
@@ -17,8 +19,8 @@
 [![Last Commit](https://img.shields.io/github/last-commit/syntezis-ru/cronctl)](https://github.com/syntezis-ru/cronctl/commits/master)
 [![GitHub Issues](https://img.shields.io/github/issues/syntezis-ru/cronctl?style=flat-square)](https://github.com/syntezis-ru/cronctl/issues)
 
-A Spring Boot starter that exposes a REST API for viewing and manually triggering
-methods annotated with `@Scheduled`.
+A Spring Boot starter that exposes an operator UI and REST API for observing, controlling,
+and manually triggering methods annotated with `@Scheduled`.
 
 Add the dependency to your project — cronctl auto-configures itself, scans all
 `@Scheduled` beans, and provides HTTP endpoints to inspect, execute, and monitor them on demand.
@@ -28,7 +30,12 @@ Add the dependency to your project — cronctl auto-configures itself, scans all
 | Dependency  | Version |
 |-------------|---------|
 | Java        | 17+     |
-| Spring Boot | 3.5.14  |
+| Spring Boot | 3.0.5+ (3.x) |
+
+On Spring Framework 6.0 (Spring Boot 3.0/3.1), task discovery, REST operations, manual
+execution history, next-execution calculation, and pause/resume are supported. Native automatic
+execution history requires Spring Framework 6.1+; on older versions the task reports
+`automatic_tracking_status: UNAVAILABLE` with an explanatory message.
 
 ## Installation
 
@@ -41,23 +48,23 @@ No additional repository configuration is required.
 <dependency>
     <groupId>ru.syntezis</groupId>
     <artifactId>cronctl-spring-boot-starter</artifactId>
-    <version>0.0.4</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
 **Gradle:**
 
 ```groovy
-implementation 'ru.syntezis:cronctl-spring-boot-starter:0.0.3'
+implementation 'ru.syntezis:cronctl-spring-boot-starter:0.1.0'
 ```
 
 No additional configuration is required. cronctl registers itself via Spring Boot
 auto-configuration as soon as the dependency is on the classpath.
 
 > **Swagger UI**
-> cronctl ships with `springdoc-openapi-starter-webmvc-ui` as a transitive dependency.
-> If your project already includes springdoc, cronctl will add its own group to your
-> existing Swagger UI. If not, a Swagger UI will be available at `/swagger-ui/index.html`.
+> Add `org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0` to enable OpenAPI
+> documentation. cronctl then adds its own group to the existing Swagger UI at
+> `/swagger-ui/index.html`. The dependency is optional and is not forced on consumers.
 
 > **Operator UI**
 > Add Thymeleaf to enable the task operations dashboard at `/api/cronctl/ui`:
@@ -89,6 +96,7 @@ public class MyApplication {
 public class MyScheduler {
 
     @CronctlTask(
+            id = "integration.sync-data",
             label = "Sync Data",
             description = "Pulls updates from the remote source",
             group = "integration",
@@ -121,15 +129,25 @@ After startup, all `@Scheduled` methods are registered automatically.
 `@CronctlTask` is optional. Without it, cronctl registers the method with sensible defaults.
 Use it to enrich the API response with human-readable metadata and control execution behaviour.
 
-| Attribute         | Default                      | Description                                                                  |
-|-------------------|------------------------------|------------------------------------------------------------------------------|
-| `label`           | method name                  | Display name shown in the API response                                       |
-| `description`     | `ClassName.methodName`       | Human-readable description                                                   |
-| `group`           | `"default"`                  | Logical group for categorisation                                             |
-| `tags`            | `[]`                         | Arbitrary tags for filtering                                                 |
-| `timeout`         | `USE_GLOBAL_TIMEOUT` (`0`)   | `0` inherits the global timeout, `-1` disables it, a positive value overrides it |
-| `timeUnit`        | `SECONDS`                    | Time unit for a positive `timeout`                                           |
-| `togglingEnabled` | `false`                      | Allows automatic scheduling to be paused and resumed through the API         |
+| Attribute                | Default                    | Description                                                                      |
+|--------------------------|----------------------------|----------------------------------------------------------------------------------|
+| `id`                     | derived stable key         | Stable task key exposed as `task_key`                                            |
+| `label`                  | method name                | Display name shown in the API response                                           |
+| `description`            | `ClassName.methodName`     | Human-readable description                                                       |
+| `group`                  | `"default"`                | Logical group for categorisation                                                 |
+| `tags`                   | `[]`                       | Arbitrary tags for filtering                                                     |
+| `timeout`                | `USE_GLOBAL_TIMEOUT` (`0`) | `0` inherits the global timeout, `-1` disables it, a positive value overrides it |
+| `timeUnit`               | `SECONDS`                  | Time unit for a positive `timeout`                                               |
+| `togglingEnabled`        | `false`                    | Allows automatic scheduling to be paused and resumed through the API             |
+| `concurrency`            | `ALLOW`                    | Process-local policy for overlapping automatic and manual executions             |
+| `maxConcurrentExecutions`| `1`                        | Positive limit used by `SKIP`, `QUEUE`, and `CANCEL_PREVIOUS`                    |
+| `retries`                | `0`                        | Automatic retries after the original failed execution; disabled by default       |
+| `retryDelay`              | `"PT1S"`                  | Base ISO-8601 delay between automatic retries                                    |
+| `retryBackoff`            | `FIXED`                    | `FIXED` or `EXPONENTIAL` delay strategy                                           |
+| `maxRetryDelay`           | `"PT5M"`                  | Maximum delay after backoff and jitter                                             |
+| `retryJitter`             | `0.0`                      | Symmetric delay jitter from `0.0` to `1.0`                                        |
+| `retryOn`                 | `[]`                       | Retryable exception types; empty means all `Exception` types                      |
+| `nonRetryableOn`          | `[]`                       | Exception types that must not be retried; takes precedence                        |
 
 Use the named constants to make the timeout intent explicit:
 
@@ -139,8 +157,101 @@ Use the named constants to make the timeout intent explicit:
 @CronctlTask(timeout = 30, timeUnit = TimeUnit.SECONDS)
 ```
 
+### Concurrent execution policies
+
+Concurrency policies prevent automatic and manual invocations of the same stable task key from
+accidentally overlapping inside one application process:
+
+```java
+@CronctlTask(
+        id = "catalog.sync",
+        concurrency = ConcurrencyPolicy.SKIP,
+        maxConcurrentExecutions = 1
+)
+@Scheduled(cron = "0 */5 * * * *")
+public void synchronizeCatalog() {
+    // ...
+}
+```
+
+| Policy            | Behaviour when the limit is reached                                               |
+|-------------------|-----------------------------------------------------------------------------------|
+| `ALLOW`           | Preserves the existing behaviour and does not enforce the configured limit        |
+| `SKIP`            | Records `SKIPPED` with `status_reason=CONCURRENT_EXECUTION`                        |
+| `QUEUE`           | Keeps the new execution in `QUEUED` until a fair semaphore permit becomes free    |
+| `CANCEL_PREVIOUS` | Interrupts the oldest execution, then waits for it to release its permit           |
+
+The same quota covers `SCHEDULED`, `MANUAL_SYNC`, and `MANUAL_ASYNC` executions. Cancellation
+is cooperative through `Thread.interrupt()`: task code must react to interruption. A replacement
+never exceeds the configured limit; if the old task ignores interruption, the replacement remains
+queued.
+
+This first implementation is local to one application context. It does not coordinate multiple
+application instances. A future distributed implementation can integrate with a provider such as
+ShedLock; cronctl does not add ShedLock or any database/Redis/Mongo dependency in this release.
+
+### Retry policies
+
+Automatic retries are explicitly opt-in because scheduled methods are not necessarily idempotent:
+
+```java
+@CronctlTask(
+        id = "catalog.sync",
+        retries = 3,
+        retryDelay = "PT10S",
+        retryBackoff = RetryBackoff.EXPONENTIAL,
+        maxRetryDelay = "PT5M",
+        retryJitter = 0.2,
+        retryOn = {SocketTimeoutException.class, ConnectException.class},
+        nonRetryableOn = IllegalArgumentException.class
+)
+```
+
+`retries = 3` means the original execution plus at most three automatic `RETRY` executions.
+Exception filters inspect the complete cause chain; `nonRetryableOn` wins. With an empty
+`retryOn`, all `Exception` subclasses are eligible, while `Error` is not retried implicitly.
+Only `FAILED` executions trigger policy retries. `TIMED_OUT` executions can still be repeated
+explicitly by an operator.
+
+Every retry has its own execution UUID and lifecycle. `parent_execution_id`, `root_execution_id`,
+`retry_series_id`, `attempt`, and `retry_trigger` preserve lineage. Automatic retries continue the
+current series; a manual Retry starts a new series and a fresh automatic retry budget. Retry
+executions use the same timeout, bounded executor, and concurrency policy as every other source.
+
+Queued persistent retries are restored after application restart. A retry whose task key is no
+longer registered becomes `SKIPPED` with `status_reason=TASK_NOT_REGISTERED`.
+
 Use `@CronctlTask.Exclude` to prevent a method from appearing in the API at all.
 This annotation is respected in `AUTO` and `PACKAGE` scan modes.
+
+### Stable task keys
+
+Task keys remain the same across application restarts. For integrations, dashboards,
+and automation, define an explicit key:
+
+```java
+@CronctlTask(
+        id = "billing.reconciliation",
+        label = "Billing reconciliation"
+)
+@Scheduled(cron = "0 0 2 * * *")
+public void reconcileBilling() {
+    // ...
+}
+```
+
+If `id` is blank, cronctl derives the key as:
+
+```text
+spring.application.name + "." + beanName + "." + methodSignature
+```
+
+For example, `billing-service.reconciliationScheduler.reconcileBilling()`.
+When `spring.application.name` is not configured, `application` is used. Explicit IDs
+also support Spring property placeholders. Duplicate task keys fail registration at startup.
+
+Task keys are returned as strings in `task_key`. Execution IDs are separate, random UUIDs
+generated for every automatic or manual execution.
 
 ## Scan Modes
 
@@ -192,10 +303,13 @@ the REST API (`cronctl.api.public-access`).
 The dashboard provides:
 
 - upcoming execution timeline and task filters;
-- schedule metadata and current enabled state;
+- schedule metadata, current enabled state, and restrictive concurrency-policy badges;
 - confirmed pause with the optional `interrupt` flag and immediate resume;
 - confirmed asynchronous manual execution;
-- live execution history, status filtering, failure details, and cancellation.
+- a forensic execution ledger for automatic and manual runs, including source, node,
+  planned and actual start, drift, duration, and failure details;
+- server-side history filtering and pagination, plus cancellation of manual async runs;
+- scheduled-task health: last automatic status, last success, and consecutive failures.
 
 Tasks refresh every 10 seconds. Executions refresh every 2 seconds while work is
 pending or running and every 10 seconds otherwise. Polling pauses in a hidden browser tab.
@@ -242,6 +356,7 @@ curl "http://localhost:8080/api/cronctl/tasks?group=integration&tag=critical"
 {
   "tasks": [
     {
+      "task_key": "integration.sync-data",
       "label": "Sync Data",
       "description": "Pulls updates from the remote source",
       "group": "integration",
@@ -252,9 +367,18 @@ curl "http://localhost:8080/api/cronctl/tasks?group=integration&tag=critical"
       "enabled": true,
       "toggling_enabled": true,
       "timeout_seconds": 30,
+      "concurrency_policy": "SKIP",
+      "max_concurrent_executions": 1,
       "next_execution_at": "2024-05-01T12:01:00Z",
+      "automatic_tracking_status": "ACTIVE",
+      "automatic_tracking_message": null,
+      "scheduled_health": {
+        "last_execution_at": "2024-05-01T12:00:00.050Z",
+        "last_execution_status": "SUCCEEDED",
+        "last_success_at": "2024-05-01T12:00:00.050Z",
+        "consecutive_failures": 0
+      },
       "details": {
-        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "method_name": "syncData",
         "schedule": {
           "fixed_rate": 60000,
@@ -270,176 +394,203 @@ curl "http://localhost:8080/api/cronctl/tasks?group=integration&tag=critical"
 Only fields that are actually configured appear in `schedule` — unset fields (`cron`, `fixed_delay`, etc.) are omitted
 from the response.
 
-`next_execution_at` is an ISO-8601 UTC timestamp of the task's next scheduled run. It is `null` for fixedRate /
-fixedDelay tasks that have not yet been picked up by the scheduler.
+`next_execution_at` is an ISO-8601 UTC timestamp of the task's next scheduled run. It can be
+`null` while Spring has not exposed a future slot, while the task is running or overdue, or
+while it is paused.
 
-### GET /api/cronctl/tasks/{id}/next-execution
+`scheduled_health` is calculated exclusively from `SCHEDULED` executions. Manual runs never
+reset the failure counter or change the last-success timestamp. `automatic_tracking_status`
+is `AMBIGUOUS` when multiple bean instances expose the same declaring class and method; cronctl
+then deliberately avoids attributing automatic observations to the wrong stable task key.
+
+### GET /api/cronctl/tasks/{taskKey}/next-execution
 
 Returns the next execution time for a single task.
 
 ```bash
-curl http://localhost:8080/api/cronctl/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/next-execution
+curl http://localhost:8080/api/cronctl/tasks/integration.sync-data/next-execution
 ```
 
 ```json
 {
-  "task_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "task_key": "integration.sync-data",
   "next_execution_at": "2024-05-01T12:01:00Z"
 }
 ```
 
-Returns `404` if the task ID is unknown. `next_execution_at` is `null` when the next run time cannot be determined (
-fixedRate / fixedDelay tasks not yet scheduled).
+Returns `404` if the task key is unknown. `next_execution_at` is `null` when Spring does not
+currently expose a future run.
 
-### POST /api/cronctl/tasks/{id}/disable
+### POST /api/cronctl/tasks/{taskKey}/disable
 
 Pauses automatic scheduled execution. The task remains registered and can still be triggered manually.
 Only tasks declared with `@CronctlTask(togglingEnabled = true)` can be disabled.
 
 ```bash
-curl -X POST "http://localhost:8080/api/cronctl/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/disable?interrupt=false"
+curl -X POST "http://localhost:8080/api/cronctl/tasks/integration.sync-data/disable?interrupt=false"
 ```
 
 `interrupt` defaults to `false`. A successful request returns the updated task with
 `enabled=false`. Returns `404` for an unknown task and `409` when toggling is not allowed.
 
-### POST /api/cronctl/tasks/{id}/enable
+### POST /api/cronctl/tasks/{taskKey}/enable
 
 Resumes automatic scheduled execution using the original cron, fixed-rate, or fixed-delay configuration.
 
 ```bash
-curl -X POST http://localhost:8080/api/cronctl/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/enable
+curl -X POST http://localhost:8080/api/cronctl/tasks/integration.sync-data/enable
 ```
 
 A successful request returns the updated task with `enabled=true`. Repeated enable and disable requests are idempotent.
 
-### POST /api/cronctl/tasks/{id}/execute
+### Execution history and lifecycle
 
-Manually triggers a registered task **synchronously** — blocks until the method returns.
-Returns `200` regardless of whether the task succeeded or failed; check `status` in the body.
+cronctl records native Spring `@Scheduled` invocations and both manual execution modes in
+one model. Every record carries an execution source:
+
+| Source         | Meaning                                     |
+|----------------|---------------------------------------------|
+| `SCHEDULED`    | Invoked automatically by Spring scheduling |
+| `MANUAL_SYNC`  | Invoked through the blocking HTTP endpoint  |
+| `MANUAL_ASYNC` | Submitted to cronctl's bounded executor     |
+| `RETRY`        | Automatic or operator-requested retry       |
+| `CATCH_UP`     | Reserved for a future catch-up policy       |
+
+The lifecycle is `CREATED → QUEUED → RUNNING` followed by one terminal status:
+
+| Status      | Description                                                 |
+|-------------|-------------------------------------------------------------|
+| `CREATED`   | Execution record created                                    |
+| `QUEUED`    | Accepted and waiting to start                               |
+| `RUNNING`   | Method is executing                                         |
+| `SUCCEEDED` | Method returned normally                                    |
+| `FAILED`    | Method threw an exception; inspect `error`                   |
+| `CANCELLED` | Cancellation or scheduled interruption was requested        |
+| `TIMED_OUT` | Async or retry execution exceeded its effective timeout       |
+| `SKIPPED`   | Execution did not start; inspect `status_reason`             |
+
+`planned_at` and `start_delay_ms` are populated for automatic runs when Spring exposes an
+exact planned slot. They are `null` when that value cannot be determined. `node_id` identifies
+the application instance that observed the run.
+
+#### POST /api/cronctl/tasks/{taskKey}/execute
+
+Executes a task synchronously and returns its final unified execution record. The HTTP response
+is `200` even when the method fails; inspect `status` and `error`. A concurrency-policy rejection
+returns `429` with `status=SKIPPED` and `status_reason=CONCURRENT_EXECUTION`.
 
 ```bash
-curl -X POST http://localhost:8080/api/cronctl/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/execute
+curl -X POST http://localhost:8080/api/cronctl/tasks/integration.sync-data/execute
 ```
 
-```json
-{
-  "status": "SUCCEEDED",
-  "execution_start_mills": 1715000000000,
-  "execution_end_mills": 1715000000123,
-  "execution_duration_mills": 123,
-  "fail_details": null
-}
-```
+#### POST /api/cronctl/tasks/{taskKey}/execute-async
 
-If the task throws an exception, `status` is `FAILED` and `fail_details.message` contains the error message.
-
-### Async Execution
-
-For long-running tasks, use the async execution API. A submission returns immediately
-with an `execution_id` that you can use to poll status or request cancellation.
-
-#### POST /api/cronctl/tasks/{taskId}/executions
-
-Submit a task for asynchronous execution. Returns `202 Accepted` with the execution ID.
+Queues a manual asynchronous execution and returns `202 Accepted`. Queue rejection returns
+`429` with a persisted `SKIPPED` record whose `status_reason` is `QUEUE_REJECTED`. A worker that
+encounters a `SKIP` concurrency limit transitions the accepted record to `SKIPPED` with
+`status_reason=CONCURRENT_EXECUTION`.
 
 ```bash
-curl -X POST http://localhost:8080/api/cronctl/tasks/3fa85f64-5717-4562-b3fc-2c963f66afa6/executions
+curl -X POST http://localhost:8080/api/cronctl/tasks/integration.sync-data/execute-async
 ```
+
+`POST /tasks/{taskKey}/executions` remains as a deprecated alias.
+
+#### Unified execution response
+
+The sync, async submission, status, and history endpoints use the same representation:
 
 ```json
 {
   "execution_id": "a1b2c3d4-0000-0000-0000-000000000001",
-  "task_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "status": "PENDING",
-  "submitted_at": "2024-05-01T12:00:00Z"
+  "task_key": "integration.sync-data",
+  "source": "SCHEDULED",
+  "status": "SUCCEEDED",
+  "node_id": "billing-service-1",
+  "created_at": "2024-05-01T12:00:00Z",
+  "queued_at": "2024-05-01T12:00:00Z",
+  "planned_at": "2024-05-01T12:00:00Z",
+  "started_at": "2024-05-01T12:00:00.050Z",
+  "finished_at": "2024-05-01T12:00:00.173Z",
+  "start_delay_ms": 50,
+  "duration_ms": 123,
+  "status_reason": null,
+  "parent_execution_id": null,
+  "root_execution_id": "a1b2c3d4-0000-0000-0000-000000000001",
+  "retry_series_id": "a1b2c3d4-0000-0000-0000-000000000001",
+  "attempt": 1,
+  "retry_trigger": null,
+  "retryable": false,
+  "error": null
 }
 ```
 
-Returns `404` if the task ID is unknown, `429` if the executor queue is full.
+#### Manual retry
+
+`POST /api/cronctl/executions/{executionId}/retry` creates an immediate retry for a leaf
+`FAILED` or `TIMED_OUT` execution and returns `202`. Manual retry remains available when
+`retries=0`; the explicit operator action starts a new retry series. A second retry of an
+execution that already has a child returns `409`.
+
+`POST /api/cronctl/executions/retry-all-failed` retries at most the newest eligible failure per
+registered task. The UI exposes both actions and confirms Retry all before submitting work.
+
+On failure, `error` contains both the exception type and message.
 
 #### GET /api/cronctl/executions/{executionId}
 
-Poll the current state of an execution.
-
-```bash
-curl http://localhost:8080/api/cronctl/executions/a1b2c3d4-0000-0000-0000-000000000001
-```
-
-```json
-{
-  "execution_id": "a1b2c3d4-0000-0000-0000-000000000001",
-  "task_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "status": "SUCCEEDED",
-  "submitted_at": "2024-05-01T12:00:00Z",
-  "started_at": "2024-05-01T12:00:00.050Z",
-  "finished_at": "2024-05-01T12:00:00.173Z",
-  "execution_duration_mills": 123,
-  "fail_details": null
-}
-```
-
-Possible `status` values:
-
-| Status      | Description                                   |
-|-------------|-----------------------------------------------|
-| `PENDING`   | Submitted, waiting for a thread               |
-| `RUNNING`   | Currently executing                           |
-| `SUCCEEDED` | Finished successfully                         |
-| `FAILED`    | Method threw an exception; see `fail_details` |
-| `CANCELLED` | Cancelled before or during execution          |
-| `TIMED_OUT` | Cancelled because execution exceeded timeout  |
-
-Returns `404` if the execution ID is unknown.
+Returns any automatic or manual execution by UUID, or `404` when it is unknown or no longer
+retained.
 
 #### DELETE /api/cronctl/executions/{executionId}
 
-Request cancellation of a running or pending execution.
-
-```bash
-curl -X DELETE http://localhost:8080/api/cronctl/executions/a1b2c3d4-0000-0000-0000-000000000001
-```
-
-| Response | Meaning                                                |
-|----------|--------------------------------------------------------|
-| `204`    | Cancellation requested; the thread will be interrupted |
-| `409`    | Execution is already in a terminal state               |
-| `404`    | Execution ID not found                                 |
+Requests interruption of an active `MANUAL_ASYNC` or `RETRY` execution. Returns `204` when
+accepted, `409` for another source or a terminal execution, and `404` for an unknown UUID.
 
 #### GET /api/cronctl/executions
 
-List all tracked executions, optionally filtered by status.
+Returns newest-first, server-paginated history.
 
-| Parameter | Type   | Required | Description                                 |
-|-----------|--------|----------|---------------------------------------------|
-| `status`  | string | no       | Filter by execution status (e.g. `RUNNING`) |
+| Parameter | Type    | Default | Description                                      |
+|-----------|---------|---------|--------------------------------------------------|
+| `taskKey` | string  | —       | Exact stable task key                            |
+| `status`  | enum    | —       | Execution status                                 |
+| `source`  | enum    | —       | Execution source                                 |
+| `nodeId`  | string  | —       | Exact node identifier                            |
+| `from`    | instant | —       | Include records created at or after this instant |
+| `to`      | instant | —       | Include records created before this instant      |
+| `page`    | integer | `0`     | Zero-based page                                  |
+| `size`    | integer | `50`    | Page size, capped at `200`                       |
 
 ```bash
-# All executions
-curl http://localhost:8080/api/cronctl/executions
-
-# Only running executions
-curl "http://localhost:8080/api/cronctl/executions?status=RUNNING"
+curl "http://localhost:8080/api/cronctl/executions?source=SCHEDULED&status=FAILED&page=0&size=50"
 ```
 
 ```json
 {
-  "executions": [
-    {
-      "execution_id": "a1b2c3d4-0000-0000-0000-000000000001",
-      "task_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "status": "RUNNING",
-      "submitted_at": "2024-05-01T12:00:00Z",
-      "started_at": "2024-05-01T12:00:00.050Z"
-    }
-  ],
-  "total": 1
+  "executions": [],
+  "total": 0,
+  "page": 0,
+  "size": 50,
+  "has_next": false
 }
 ```
 
-> **Note:** cronctl keeps executions in memory for the lifetime of the application.
-> There is currently no eviction policy — in high-throughput scenarios, consider
-> restarting periodically or calling the list endpoint to monitor growth.
+The default `InMemoryExecutionStore` retains at most 1,000 terminal records. It enforces the
+size limit immediately and removes records older than seven days every ten minutes; active
+executions are never evicted. Its history is process-local and is lost on restart. Scheduled
+health remains available for the process lifetime even after individual records are evicted.
+Declare your own `ExecutionStore` bean to replace the default store without changing the
+lifecycle or API. A custom store must implement `deleteExpired(Instant threshold)`; cronctl
+invokes it on the same retention schedule. cronctl does not yet detect executions missed while
+the application was down; `CATCH_UP` remains reserved for a future policy.
+
+Task pause markers use a separate `TaskStateStore` SPI. The default `InMemoryTaskStateStore`
+is thread-safe but process-local, so pauses do not survive an application restart. Declare a
+custom persistent `TaskStateStore` bean to restore paused tasks at startup. Unknown stored task
+keys are retained, while markers for tasks that no longer allow toggling are removed. Manual
+sync and async execution remain available while a task is paused. JDBC, Redis, and Mongo store
+implementations are not bundled in this release.
 
 ## Programmatic Configuration
 
@@ -458,6 +609,10 @@ public CronctlConfiguration cronctlConfiguration() {
             .uiEnabled(true)
             .executorThreadPoolSize(8)
             .executorTimeoutSeconds(120)
+            .historyMaxEntries(20_000)
+            .historyRetention(Duration.ofDays(14))
+            .historyCleanupInterval(Duration.ofMinutes(10))
+            .historyNodeId("billing-service-1")
             .build();
 }
 ```
@@ -477,6 +632,10 @@ All builder fields map directly to their `application.yml` counterparts:
 | `executorThreadPoolSize` | `cronctl.executor.thread-pool-size` |
 | `executorQueueCapacity`  | `cronctl.executor.queue-capacity`   |
 | `executorTimeoutSeconds` | `cronctl.executor.timeout-seconds`  |
+| `historyMaxEntries`      | `cronctl.history.max-entries`       |
+| `historyRetention`       | `cronctl.history.retention`         |
+| `historyCleanupInterval` | `cronctl.history.cleanup-interval`  |
+| `historyNodeId`          | `cronctl.history.node-id`           |
 
 > **Priority**: the programmatic bean takes precedence over `application.yml`, which takes
 > precedence over cronctl's built-in defaults.
@@ -499,6 +658,10 @@ All properties are optional. The defaults work out of the box.
 | `cronctl.executor.thread-pool-size` | `4`               | Number of threads in the async execution pool                                              |
 | `cronctl.executor.queue-capacity`   | `100`             | Maximum number of tasks waiting in the submission queue                                    |
 | `cronctl.executor.timeout-seconds`  | `60`              | Default async execution timeout in seconds; `0` disables the timeout                       |
+| `cronctl.history.max-entries`       | `1000`            | Maximum terminal records retained by the default in-memory store                           |
+| `cronctl.history.retention`         | `7d`              | Maximum age of terminal records retained by the default in-memory store                    |
+| `cronctl.history.cleanup-interval`  | `10m`             | Interval between background deletion of expired terminal records                           |
+| `cronctl.history.node-id`           | derived           | Node ID; falls back to instance ID, `HOSTNAME`, then application name plus process UUID    |
 
 See [`docs/config-examples/`](docs/config-examples/) for ready-to-use configuration files covering
 common scenarios: custom paths, secured API, production setup, and more.

@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 
 /** Details of a failed task execution. */
 @Data
@@ -15,8 +16,13 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Details of a task execution failure")
 public class FailDetailsDto {
 
+    @JsonProperty("type")
+    @Schema(description = "Fully qualified exception type", example = "java.lang.IllegalStateException")
+    private String type;
+
     @JsonProperty("message")
     @Schema(description = "Error message from the exception", example = "Connection refused")
+    @Nullable
     private String message;
 
 }

@@ -1,28 +1,48 @@
 package ru.syntezis.cronctl.presentation.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
-import org.mapstruct.ReportingPolicy;
+import org.springframework.stereotype.Component;
 import ru.syntezis.cronctl.domain.execution.TaskExecution;
 import ru.syntezis.cronctl.presentation.dto.ExecutionStatusDto;
-import ru.syntezis.cronctl.presentation.dto.ExecutionSubmittedDto;
+import ru.syntezis.cronctl.presentation.dto.FailDetailsDto;
 
-@Mapper(
-        unmappedTargetPolicy = ReportingPolicy.ERROR,
-        componentModel = MappingConstants.ComponentModel.SPRING,
-        uses = {
-                FailDetailsMapper.class
-        }
-)
-public interface TaskExecutionMapper {
+/** Maps unified execution domain objects to REST DTOs. */
+@Component
+public class TaskExecutionMapper {
 
-    @Mapping(source = "state", target = "status")
-    ExecutionSubmittedDto toSubmittedDto(TaskExecution execution);
+    public ExecutionStatusDto toDto(TaskExecution execution) {
+        FailDetailsDto error = execution.getErrorType() == null
+                ? null
+                : FailDetailsDto.builder()
+                        .type(execution.getErrorType())
+                        .message(execution.getErrorMessage())
+                        .build();
+        return ExecutionStatusDto.builder()
+                .executionId(execution.getExecutionId())
+                .taskKey(execution.getTaskKey())
+                .source(execution.getSource())
+                .status(execution.getStatus())
+                .nodeId(execution.getNodeId())
+                .createdAt(execution.getCreatedAt())
+                .queuedAt(execution.getQueuedAt())
+                .plannedAt(execution.getPlannedAt())
+                .startedAt(execution.getStartedAt())
+                .finishedAt(execution.getFinishedAt())
+                .startDelayMs(execution.getStartDelayMillis())
+                .durationMs(execution.getDurationMillis())
+                .statusReason(execution.getStatusReason())
+                .parentExecutionId(execution.getParentExecutionId())
+                .rootExecutionId(execution.getRootExecutionId())
+                .retrySeriesId(execution.getRetrySeriesId())
+                .attempt(execution.getAttempt())
+                .retryTrigger(execution.getRetryTrigger())
+                .error(error)
+                .build();
+    }
 
-    @Mapping(source = "state", target = "status")
-    @Mapping(source = "result.executionDurationMills", target = "executionDurationMills")
-    @Mapping(source = "result.failDetails", target = "failDetails")
-    ExecutionStatusDto toStatusDto(TaskExecution execution);
+    public ExecutionStatusDto toDto(TaskExecution execution, boolean retryable) {
+        ExecutionStatusDto dto = toDto(execution);
+        dto.setRetryable(retryable);
+        return dto;
+    }
 
 }

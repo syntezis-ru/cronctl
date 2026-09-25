@@ -3,58 +3,34 @@ package ru.syntezis.cronctl.core.async;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import ru.syntezis.cronctl.annotation.CronctlTask;
-import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
+import ru.syntezis.cronctl.core.execution.ExecutionLifecycleService;
 import ru.syntezis.cronctl.domain.execution.TaskExecution;
 import ru.syntezis.cronctl.domain.task.Task;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
+import ru.syntezis.cronctl.enums.ExecutionSource;
 import ru.syntezis.cronctl.properties.CronctlProperties;
 
-import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-/**
- * Submits registered tasks for asynchronous execution on a bounded thread pool.
- *
- * <p>Each submission creates a {@link TaskExecution} entry tracked in {@link ExecutionRegistry}.
- * Timeout cancellation is handled by a dedicated scheduler that interrupts the executing thread
- * after the configured deadline.
- *
- * <p>The effective timeout per task is resolved as follows:
- * <ol>
- *   <li>{@code @CronctlTask(timeout=USE_GLOBAL_TIMEOUT)} ({@code 0}) uses
- *       {@code cronctl.executor.timeout-seconds}.</li>
- *   <li>{@code @CronctlTask(timeout=NO_TIMEOUT)} ({@code -1}) disables the timeout.</li>
- *   <li>A positive task timeout overrides the global value.</li>
- * </ol>
- */
+/** Submits registered tasks for tracked asynchronous execution on a bounded thread pool. */
 @Slf4j
 public class AsyncTaskExecutor {
 
-    private final BlockingTaskExecutor syncExecutor;
-    private final ExecutionRegistry executionRegistry;
+    private final ExecutionLifecycleService lifecycleService;
     private final long defaultTimeoutSeconds;
     private final ThreadPoolExecutor threadPool;
     private final ScheduledExecutorService timeoutScheduler;
 
-    /**
-     * Creates an executor with a bounded thread pool and a dedicated timeout scheduler.
-     *
-     * @param syncExecutor       executor used to run the task body on the worker thread
-     * @param executionRegistry  registry where execution state is tracked
-     * @param executorProperties thread-pool and timeout configuration
-     */
-    public AsyncTaskExecutor(BlockingTaskExecutor syncExecutor,
-                             ExecutionRegistry executionRegistry,
+    public AsyncTaskExecutor(ExecutionLifecycleService lifecycleService,
                              CronctlProperties.Executor executorProperties) {
-        this.syncExecutor = syncExecutor;
-        this.executionRegistry = executionRegistry;
+        this.lifecycleService = lifecycleService;
         this.defaultTimeoutSeconds = executorProperties.getTimeoutSeconds();
         this.threadPool = new ThreadPoolExecutor(
                 executorProperties.getThreadPoolSize(),
@@ -65,63 +41,46 @@ public class AsyncTaskExecutor {
                 new ThreadPoolExecutor.AbortPolicy()
         );
         this.timeoutScheduler = Executors.newSingleThreadScheduledExecutor(
-                daemonFactory("cronctl-timeout")
+                daemonFactory("cronctl-timeout-")
         );
     }
 
-    /**
-     * Submits a task for async execution.
-     *
-     * @param task task to execute
-     * @return execution ID that can be used to query status or request cancellation
-     * @throws java.util.concurrent.RejectedExecutionException if the queue is full
-     */
-    public UUID submit(Task task) {
-        TaskExecution execution = new TaskExecution(task.getId());
-        executionRegistry.register(execution);
+    public TaskExecution submit(Task task) {
+        TaskExecution execution = lifecycleService.createQueued(
+                task.getTaskKey(), ExecutionSource.MANUAL_ASYNC, null
+        );
+        return submit(task, execution);
+    }
 
+    /** Submits an existing queued execution, used by delayed retry attempts. */
+    public TaskExecution submit(Task task, TaskExecution execution) {
         long effectiveTimeout = task.getTimeoutSeconds() == CronctlTask.USE_GLOBAL_TIMEOUT
                 ? defaultTimeoutSeconds
                 : task.getTimeoutSeconds();
 
-        Future<?> future = threadPool.submit(() -> executeAsync(execution, task));
-        execution.setFuture(future);
-
-        if (execution.isCancellationRequested()) {
-            future.cancel(true);
+        try {
+            Future<?> future = threadPool.submit(() -> lifecycleService.execute(execution, task));
+            execution.setFuture(future);
+            if (execution.isCancellationRequested()) {
+                future.cancel(true);
+            }
+        } catch (RejectedExecutionException e) {
+            lifecycleService.skip(execution, "QUEUE_REJECTED");
+            return execution;
         }
 
         if (effectiveTimeout > 0) {
             scheduleTimeout(execution, effectiveTimeout);
         }
-
-        log.info("Task {} submitted for async execution, executionId={}", task.getId(), execution.getExecutionId());
-        return execution.getExecutionId();
-    }
-
-    private void executeAsync(TaskExecution execution, Task task) {
-        if (!execution.start()) {
-            log.debug("Execution {} was cancelled before starting", execution.getExecutionId());
-            return;
-        }
-
-        log.debug("Execution {} started", execution.getExecutionId());
-        TaskExecutionDetails details = syncExecutor.executeTask(task);
-
-        if (execution.isCancellationRequested()) {
-            execution.markCancelled();
-            log.info("Execution {} marked as {}", execution.getExecutionId(), execution.getState());
-        } else {
-            execution.complete(details);
-            log.info("Execution {} completed with status {}", execution.getExecutionId(), execution.getState());
-        }
+        log.info("Task {} submitted for async execution, executionId={}",
+                task.getTaskKey(), execution.getExecutionId());
+        return execution;
     }
 
     private void scheduleTimeout(TaskExecution execution, long timeoutSeconds) {
         timeoutScheduler.schedule(() -> {
-            boolean requested = execution.requestCancellation(true);
+            boolean requested = lifecycleService.requestCancellation(execution, true);
             if (requested) {
-                execution.cancelFuture();
                 log.info("Execution {} timed out after {}s", execution.getExecutionId(), timeoutSeconds);
             }
         }, timeoutSeconds, TimeUnit.SECONDS);
@@ -129,14 +88,14 @@ public class AsyncTaskExecutor {
 
     private static ThreadFactory daemonFactory(String namePrefix) {
         AtomicLong counter = new AtomicLong();
-        return r -> {
-            Thread thread = new Thread(r, namePrefix + counter.getAndIncrement());
+        return runnable -> {
+            Thread thread = new Thread(runnable, namePrefix + counter.getAndIncrement());
             thread.setDaemon(true);
             return thread;
         };
     }
 
-    /** Shuts down the thread pool and timeout scheduler, invoked automatically on application context close. */
+    /** Shuts down the thread pool and timeout scheduler on application context close. */
     @PreDestroy
     public void shutdown() {
         log.info("Shutting down AsyncTaskExecutor");

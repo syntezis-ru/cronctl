@@ -34,6 +34,12 @@
       "type": "ru.syntezis.cronctl.properties.CronctlProperties$Executor",
       "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
       "sourceMethod": "getExecutor()"
+    },
+    {
+      "name": "cronctl.history",
+      "type": "ru.syntezis.cronctl.properties.CronctlProperties$History",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties",
+      "sourceMethod": "getHistory()"
     }
   ],
   "properties": [
@@ -119,6 +125,33 @@
       "description": "Default execution timeout in seconds. 0 disables the global timeout. A task with timeout=0 inherits this value, timeout=-1 disables it, and a positive timeout overrides it.",
       "defaultValue": 60,
       "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$Executor"
+    },
+    {
+      "name": "cronctl.history.max-entries",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of terminal execution records retained by the default in-memory store.",
+      "defaultValue": 1000,
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$History"
+    },
+    {
+      "name": "cronctl.history.retention",
+      "type": "java.time.Duration",
+      "description": "Maximum age of terminal execution records before background cleanup.",
+      "defaultValue": "7d",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$History"
+    },
+    {
+      "name": "cronctl.history.cleanup-interval",
+      "type": "java.time.Duration",
+      "description": "Interval between background deletion of expired terminal execution records.",
+      "defaultValue": "10m",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$History"
+    },
+    {
+      "name": "cronctl.history.node-id",
+      "type": "java.lang.String",
+      "description": "Node identifier attached to execution records. Falls back to spring.application.instance-id, HOSTNAME, or a process UUID.",
+      "sourceType": "ru.syntezis.cronctl.properties.CronctlProperties$History"
     }
   ],
   "hints": [

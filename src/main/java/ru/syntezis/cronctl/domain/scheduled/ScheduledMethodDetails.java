@@ -5,11 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 /**
  * Immutable metadata for a registered {@code @Scheduled} method:
- * its unique id, name, and resolved schedule configuration.
+ * its stable task key, name, and resolved schedule configuration.
  */
 @Data
 @NoArgsConstructor
@@ -17,7 +15,7 @@ import java.util.UUID;
 @Builder
 public class ScheduledMethodDetails {
 
-    private UUID id;
+    private String taskKey;
     private String methodName;
     private ScheduleDetails schedule;
 

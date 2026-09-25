@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
@@ -15,7 +14,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
-import static ru.syntezis.cronctl.util.condition.Limits.*;
+import static ru.syntezis.cronctl.util.condition.Limits.FIXED_RATE_MAX;
+import static ru.syntezis.cronctl.util.condition.Limits.FIXED_RATE_MIN;
+import static ru.syntezis.cronctl.util.condition.Limits.RANDOM_STRING_LENGTH;
+import static ru.syntezis.cronctl.util.condition.Limits.UUID_LENGTH;
 
 @UtilityClass
 public class Conditions {
@@ -56,19 +58,13 @@ public class Conditions {
         }
     }
 
-    public static class TaskExecutionDetailsUUIDCondition extends Condition<TaskExecutionDetails> {
-
-        @Override
-        public boolean matches(TaskExecutionDetails value) {
-            return new UUIDCondition().matches(value.getExecutionId());
-        }
-    }
-
-    public static class ScheduledMethodDetailsUUIDCondition extends Condition<ScheduledMethodDetails> {
+    public static class ScheduledMethodDetailsTaskKeyCondition extends Condition<ScheduledMethodDetails> {
 
         @Override
         public boolean matches(ScheduledMethodDetails value) {
-            return new UUIDCondition().matches(value.getId());
+            return Optional.ofNullable(value.getTaskKey())
+                    .filter(taskKey -> !taskKey.isBlank())
+                    .isPresent();
         }
     }
 

@@ -20,7 +20,6 @@ import ru.syntezis.cronctl.util.Repeats;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -35,17 +34,17 @@ class CronctlTest {
 
     private static final EasyRandom random = new EasyRandom(new EasyRandomParameters()
             .randomize(Method.class, () -> Try.of(() -> Object.class.getDeclaredMethod("toString")).get())
-            .excludeField(f -> f.getName().equals("scheduledMethodId"))
+            .excludeField(f -> f.getName().equals("taskKey"))
     );
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2, 3, 10, 100, 999})
     void getAllTasks_ThreeTasksInRegistry_ListReturned(int tasksCount) {
         // Given
-        List<Pair<UUID, Task>> tasks = Repeats.supplierRepeat(tasksCount, () -> {
-            UUID id = UUID.randomUUID();
+        List<Pair<String, Task>> tasks = Repeats.supplierRepeat(tasksCount, () -> {
+            String taskKey = "task-" + random.nextLong();
             Task method = random.nextObject(Task.class);
-            return Pair.of(id, method);
+            return Pair.of(taskKey, method);
         });
 
         registry.addAll(tasks);
@@ -63,12 +62,12 @@ class CronctlTest {
     @Test
     void getByTag_TasksWithMatchingTag_ReturnsOnlyMatchingTasks() {
         // Given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        Task withTag    = buildTask(id1, "withTag",    List.of("billing"));
-        Task withoutTag = buildTask(id2, "withoutTag", List.of("other"));
-        registry.add(id1, withTag);
-        registry.add(id2, withoutTag);
+        String taskKey1 = "test.withTag";
+        String taskKey2 = "test.withoutTag";
+        Task withTag    = buildTask(taskKey1, "withTag",    List.of("billing"));
+        Task withoutTag = buildTask(taskKey2, "withoutTag", List.of("other"));
+        registry.add(taskKey1, withTag);
+        registry.add(taskKey2, withoutTag);
 
         // When
         final List<Task> actual = underTest.getByTag("billing");
@@ -80,8 +79,8 @@ class CronctlTest {
     @Test
     void getByTag_NoMatchingTag_ReturnsEmptyList() {
         // Given
-        UUID id = UUID.randomUUID();
-        registry.add(id, buildTask(id, "task", List.of("alpha")));
+        String taskKey = "test.task";
+        registry.add(taskKey, buildTask(taskKey, "task", List.of("alpha")));
 
         // When
         final List<Task> actual = underTest.getByTag("nonexistent");
@@ -93,12 +92,12 @@ class CronctlTest {
     @Test
     void getByGroup_TasksInMatchingGroup_ReturnsOnlyMatchingTasks() {
         // Given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        Task inGroup    = buildTaskWithGroup(id1, "inGroup",    "reports");
-        Task otherGroup = buildTaskWithGroup(id2, "otherGroup", "billing");
-        registry.add(id1, inGroup);
-        registry.add(id2, otherGroup);
+        String taskKey1 = "test.inGroup";
+        String taskKey2 = "test.otherGroup";
+        Task inGroup    = buildTaskWithGroup(taskKey1, "inGroup",    "reports");
+        Task otherGroup = buildTaskWithGroup(taskKey2, "otherGroup", "billing");
+        registry.add(taskKey1, inGroup);
+        registry.add(taskKey2, otherGroup);
 
         // When
         final List<Task> actual = underTest.getByGroup("reports");
@@ -110,8 +109,8 @@ class CronctlTest {
     @Test
     void getByGroup_NoMatchingGroup_ReturnsEmptyList() {
         // Given
-        UUID id = UUID.randomUUID();
-        registry.add(id, buildTaskWithGroup(id, "task", "someGroup"));
+        String taskKey = "test.task";
+        registry.add(taskKey, buildTaskWithGroup(taskKey, "task", "someGroup"));
 
         // When
         final List<Task> actual = underTest.getByGroup("nonexistent");
@@ -136,11 +135,11 @@ class CronctlTest {
     @Test
     void taskExists_taskExistsInRegistry_ReturnTrue() {
         // Given
-        UUID scheduledMethodId = UUID.randomUUID();
-        registry.add(scheduledMethodId, random.nextObject(Task.class));
+        String taskKey = "test.task";
+        registry.add(taskKey, random.nextObject(Task.class));
 
         // When
-        final boolean actual = underTest.taskExists(scheduledMethodId);
+        final boolean actual = underTest.taskExists(taskKey);
 
         // Then
         assertThat(actual)
@@ -153,7 +152,7 @@ class CronctlTest {
         registry.clear();
 
         // When
-        final boolean actual = underTest.taskExists(UUID.randomUUID());
+        final boolean actual = underTest.taskExists("missing.task");
 
         // Then
         assertThat(actual)
@@ -163,14 +162,14 @@ class CronctlTest {
     @Test
     void getById_taskExistsInRegistry_ReturnFilledOptional() {
         // Given
-        UUID scheduledMethodId = UUID.randomUUID();
+        String taskKey = "test.task";
         final Task expected = random.nextObject(Task.class);
-        expected.getDetails().setId(scheduledMethodId);
+        expected.getDetails().setTaskKey(taskKey);
 
-        registry.add(scheduledMethodId, expected);
+        registry.add(taskKey, expected);
 
         // When
-        final Optional<Task> actual = underTest.getById(scheduledMethodId);
+        final Optional<Task> actual = underTest.getById(taskKey);
 
         // Then
         assertThat(actual)
@@ -185,7 +184,7 @@ class CronctlTest {
         registry.clear();
 
         // When
-        final Optional<Task> actual = underTest.getById(UUID.randomUUID());
+        final Optional<Task> actual = underTest.getById("missing.task");
 
         // Then
         assertThat(actual)
@@ -197,27 +196,27 @@ class CronctlTest {
         registry.clear();
     }
 
-    private static Task buildTask(UUID id, String methodName, List<String> tags) {
+    private static Task buildTask(String taskKey, String methodName, List<String> tags) {
         return Task.builder()
                 .label(methodName)
                 .description(methodName)
                 .group("default")
                 .tags(tags)
                 .details(ScheduledMethodDetails.builder()
-                        .id(id)
+                        .taskKey(taskKey)
                         .methodName(methodName)
                         .build())
                 .build();
     }
 
-    private static Task buildTaskWithGroup(UUID id, String methodName, String group) {
+    private static Task buildTaskWithGroup(String taskKey, String methodName, String group) {
         return Task.builder()
                 .label(methodName)
                 .description(methodName)
                 .group(group)
                 .tags(List.of())
                 .details(ScheduledMethodDetails.builder()
-                        .id(id)
+                        .taskKey(taskKey)
                         .methodName(methodName)
                         .build())
                 .build();

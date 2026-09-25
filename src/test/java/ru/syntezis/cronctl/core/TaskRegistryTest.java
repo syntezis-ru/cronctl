@@ -5,12 +5,14 @@ import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
+import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
+import ru.syntezis.cronctl.enums.AutomaticTrackingStatus;
 import ru.syntezis.cronctl.exception.TaskAlreadyExistsInRegistryException;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,26 +29,26 @@ class TaskRegistryTest {
     @Test
     void add_NewTask_TaskRegistered() {
         // Given
-        UUID id = UUID.randomUUID();
-        Task task = buildTask(id, "myMethod");
+        String taskKey = "test.myMethod";
+        Task task = buildTask(taskKey, "myMethod");
 
         // When
-        underTest.add(id, task);
+        underTest.add(taskKey, task);
 
         // Then
-        assertThat(underTest.contains(id))
+        assertThat(underTest.contains(taskKey))
                 .isTrue();
     }
 
     @Test
-    void add_DuplicateId_ThrowsTaskAlreadyExistsInRegistryException() {
+    void add_DuplicateTaskKey_ThrowsTaskAlreadyExistsInRegistryException() {
         // Given
-        UUID id = UUID.randomUUID();
-        Task task = buildTask(id, "myMethod");
-        underTest.add(id, task);
+        String taskKey = "test.myMethod";
+        Task task = buildTask(taskKey, "myMethod");
+        underTest.add(taskKey, task);
 
         // When
-        ThrowingCallable invoke = () -> underTest.add(id, task);
+        ThrowingCallable invoke = () -> underTest.add(taskKey, task);
 
         // Then
         assertThatThrownBy(invoke)
@@ -54,14 +56,14 @@ class TaskRegistryTest {
     }
 
     @Test
-    void getById_ExistingId_ReturnsTask() {
+    void getById_ExistingTaskKey_ReturnsTask() {
         // Given
-        UUID id = UUID.randomUUID();
-        final Task expected = buildTask(id, "myMethod");
-        underTest.add(id, expected);
+        String taskKey = "test.myMethod";
+        final Task expected = buildTask(taskKey, "myMethod");
+        underTest.add(taskKey, expected);
 
         // When
-        final Optional<Task> actual = underTest.getById(id);
+        final Optional<Task> actual = underTest.getById(taskKey);
 
         // Then
         assertThat(actual)
@@ -71,12 +73,12 @@ class TaskRegistryTest {
     }
 
     @Test
-    void getById_UnknownId_ReturnsEmpty() {
+    void getById_UnknownTaskKey_ReturnsEmpty() {
         // Given
-        UUID id = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final Optional<Task> actual = underTest.getById(id);
+        final Optional<Task> actual = underTest.getById(taskKey);
 
         // Then
         assertThat(actual)
@@ -84,13 +86,13 @@ class TaskRegistryTest {
     }
 
     @Test
-    void contains_ExistingId_ReturnsTrue() {
+    void contains_ExistingTaskKey_ReturnsTrue() {
         // Given
-        UUID id = UUID.randomUUID();
-        underTest.add(id, buildTask(id, "myMethod"));
+        String taskKey = "test.myMethod";
+        underTest.add(taskKey, buildTask(taskKey, "myMethod"));
 
         // When
-        final boolean actual = underTest.contains(id);
+        final boolean actual = underTest.contains(taskKey);
 
         // Then
         assertThat(actual)
@@ -98,12 +100,12 @@ class TaskRegistryTest {
     }
 
     @Test
-    void contains_UnknownId_ReturnsFalse() {
+    void contains_UnknownTaskKey_ReturnsFalse() {
         // Given
-        UUID id = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final boolean actual = underTest.contains(id);
+        final boolean actual = underTest.contains(taskKey);
 
         // Then
         assertThat(actual)
@@ -113,10 +115,10 @@ class TaskRegistryTest {
     @Test
     void getAll_MultipleTasksAdded_ReturnsAllTasks() {
         // Given
-        Task task1 = buildTask(UUID.randomUUID(), "method1");
-        Task task2 = buildTask(UUID.randomUUID(), "method2");
-        underTest.add(task1.getId(), task1);
-        underTest.add(task2.getId(), task2);
+        Task task1 = buildTask("test.method1", "method1");
+        Task task2 = buildTask("test.method2", "method2");
+        underTest.add(task1.getTaskKey(), task1);
+        underTest.add(task2.getTaskKey(), task2);
 
         // When
         final List<Task> actual = underTest.getAll();
@@ -139,32 +141,32 @@ class TaskRegistryTest {
     @Test
     void addAll_ListOfTasks_AllTasksRegistered() {
         // Given
-        Task task1 = buildTask(UUID.randomUUID(), "method1");
-        Task task2 = buildTask(UUID.randomUUID(), "method2");
-        List<Pair<UUID, Task>> entries = List.of(
-                Pair.of(task1.getId(), task1),
-                Pair.of(task2.getId(), task2)
+        Task task1 = buildTask("test.method1", "method1");
+        Task task2 = buildTask("test.method2", "method2");
+        List<Pair<String, Task>> entries = List.of(
+                Pair.of(task1.getTaskKey(), task1),
+                Pair.of(task2.getTaskKey(), task2)
         );
 
         // When
         underTest.addAll(entries);
 
         // Then
-        assertThat(underTest.contains(task1.getId()))
+        assertThat(underTest.contains(task1.getTaskKey()))
                 .isTrue();
-        assertThat(underTest.contains(task2.getId()))
+        assertThat(underTest.contains(task2.getTaskKey()))
                 .isTrue();
     }
 
     @Test
     void addAll_DuplicateEntry_ThrowsTaskAlreadyExistsInRegistryException() {
         // Given
-        UUID id = UUID.randomUUID();
-        Task task = buildTask(id, "myMethod");
-        underTest.add(id, task);
+        String taskKey = "test.myMethod";
+        Task task = buildTask(taskKey, "myMethod");
+        underTest.add(taskKey, task);
 
         // When
-        ThrowingCallable invoke = () -> underTest.addAll(List.of(Pair.of(id, task)));
+        ThrowingCallable invoke = () -> underTest.addAll(List.of(Pair.of(taskKey, task)));
 
         // Then
         assertThatThrownBy(invoke)
@@ -174,15 +176,15 @@ class TaskRegistryTest {
     @Test
     void getByTag_MatchingTasks_ReturnsOnlyMatchingTasks() {
         // Given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        UUID id3 = UUID.randomUUID();
-        Task taggedA = buildTask(id1, "method1", List.of("alpha"));
-        Task taggedB = buildTask(id2, "method2", List.of("alpha", "beta"));
-        Task other   = buildTask(id3, "method3", List.of("gamma"));
-        underTest.add(id1, taggedA);
-        underTest.add(id2, taggedB);
-        underTest.add(id3, other);
+        String taskKey1 = "test.method1";
+        String taskKey2 = "test.method2";
+        String taskKey3 = "test.method3";
+        Task taggedA = buildTask(taskKey1, "method1", List.of("alpha"));
+        Task taggedB = buildTask(taskKey2, "method2", List.of("alpha", "beta"));
+        Task other   = buildTask(taskKey3, "method3", List.of("gamma"));
+        underTest.add(taskKey1, taggedA);
+        underTest.add(taskKey2, taggedB);
+        underTest.add(taskKey3, other);
 
         // When
         final List<Task> actual = underTest.getByTag("alpha");
@@ -195,8 +197,8 @@ class TaskRegistryTest {
     @Test
     void getByTag_NoMatchingTasks_ReturnsEmptyList() {
         // Given
-        UUID id = UUID.randomUUID();
-        underTest.add(id, buildTask(id, "method1", List.of("only")));
+        String taskKey = "test.method1";
+        underTest.add(taskKey, buildTask(taskKey, "method1", List.of("only")));
 
         // When
         final List<Task> actual = underTest.getByTag("nonexistent");
@@ -208,15 +210,15 @@ class TaskRegistryTest {
     @Test
     void getByGroup_MatchingTasks_ReturnsOnlyMatchingGroup() {
         // Given
-        UUID id1 = UUID.randomUUID();
-        UUID id2 = UUID.randomUUID();
-        UUID id3 = UUID.randomUUID();
-        Task inGroup    = buildTaskWithGroup(id1, "method1", "billing");
-        Task alsoIn     = buildTaskWithGroup(id2, "method2", "billing");
-        Task otherGroup = buildTaskWithGroup(id3, "method3", "reports");
-        underTest.add(id1, inGroup);
-        underTest.add(id2, alsoIn);
-        underTest.add(id3, otherGroup);
+        String taskKey1 = "test.method1";
+        String taskKey2 = "test.method2";
+        String taskKey3 = "test.method3";
+        Task inGroup    = buildTaskWithGroup(taskKey1, "method1", "billing");
+        Task alsoIn     = buildTaskWithGroup(taskKey2, "method2", "billing");
+        Task otherGroup = buildTaskWithGroup(taskKey3, "method3", "reports");
+        underTest.add(taskKey1, inGroup);
+        underTest.add(taskKey2, alsoIn);
+        underTest.add(taskKey3, otherGroup);
 
         // When
         final List<Task> actual = underTest.getByGroup("billing");
@@ -229,8 +231,8 @@ class TaskRegistryTest {
     @Test
     void getByGroup_NoMatchingTasks_ReturnsEmptyList() {
         // Given
-        UUID id = UUID.randomUUID();
-        underTest.add(id, buildTaskWithGroup(id, "method1", "someGroup"));
+        String taskKey = "test.method1";
+        underTest.add(taskKey, buildTaskWithGroup(taskKey, "method1", "someGroup"));
 
         // When
         final List<Task> actual = underTest.getByGroup("nonexistent");
@@ -242,8 +244,8 @@ class TaskRegistryTest {
     @Test
     void clear_TasksPresent_RegistryEmptied() {
         // Given
-        UUID id = UUID.randomUUID();
-        underTest.add(id, buildTask(id, "myMethod"));
+        String taskKey = "test.myMethod";
+        underTest.add(taskKey, buildTask(taskKey, "myMethod"));
 
         // When
         underTest.clear();
@@ -251,39 +253,98 @@ class TaskRegistryTest {
         // Then
         assertThat(underTest.getAll())
                 .isEmpty();
-        assertThat(underTest.contains(id))
+        assertThat(underTest.contains(taskKey))
                 .isFalse();
     }
 
-    private Task buildTask(UUID id, String methodName) {
-        return buildTask(id, methodName, List.of());
+    @Test
+    void getByScheduledMethod_DuplicateBeanTargets_AmbiguousTasksNotResolved() throws NoSuchMethodException {
+        // Given
+        Method method = SampleScheduledBean.class.getDeclaredMethod("run");
+        Task firstTask = buildReferencedTask("first.task", new SampleScheduledBean(), method);
+        Task secondTask = buildReferencedTask("second.task", new SampleScheduledBean(), method);
+        underTest.add(firstTask.getTaskKey(), firstTask);
+        underTest.add(secondTask.getTaskKey(), secondTask);
+
+        // When
+        final Optional<Task> actual = underTest.getByScheduledMethod(SampleScheduledBean.class, method);
+
+        // Then
+        assertThat(actual).isEmpty();
+        assertThat(firstTask.getAutomaticTrackingStatus()).isEqualTo(AutomaticTrackingStatus.AMBIGUOUS);
+        assertThat(secondTask.getAutomaticTrackingStatus()).isEqualTo(AutomaticTrackingStatus.AMBIGUOUS);
+        assertThat(firstTask.getAutomaticTrackingMessage()).isNotBlank();
     }
 
-    private Task buildTask(UUID id, String methodName, List<String> tags) {
+    @Test
+    void getByScheduledMethod_SingleBeanTarget_TaskResolved() throws NoSuchMethodException {
+        // Given
+        Method method = SampleScheduledBean.class.getDeclaredMethod("run");
+        final Task expected = buildReferencedTask("first.task", new SampleScheduledBean(), method);
+        underTest.add(expected.getTaskKey(), expected);
+
+        // When
+        final Optional<Task> actual = underTest.getByScheduledMethod(SampleScheduledBean.class, method);
+
+        // Then
+        assertThat(actual).contains(expected);
+    }
+
+    private Task buildTask(String taskKey, String methodName) {
+        return buildTask(taskKey, methodName, List.of());
+    }
+
+    private Task buildTask(String taskKey, String methodName, List<String> tags) {
         return Task.builder()
                 .label(methodName)
                 .description("description")
                 .group("default")
                 .tags(tags)
                 .details(ScheduledMethodDetails.builder()
-                        .id(id)
+                        .taskKey(taskKey)
                         .methodName(methodName)
                         .build()
                 )
                 .build();
     }
 
-    private Task buildTaskWithGroup(UUID id, String methodName, String group) {
+    private Task buildTaskWithGroup(String taskKey, String methodName, String group) {
         return Task.builder()
                 .label(methodName)
                 .description("description")
                 .group(group)
                 .tags(List.of())
                 .details(ScheduledMethodDetails.builder()
-                        .id(id)
+                        .taskKey(taskKey)
                         .methodName(methodName)
                         .build()
                 )
                 .build();
     }
+
+    private Task buildReferencedTask(String taskKey, Object bean, Method method) {
+        return Task.builder()
+                .label(method.getName())
+                .description("description")
+                .group("default")
+                .tags(List.of())
+                .details(ScheduledMethodDetails.builder()
+                        .taskKey(taskKey)
+                        .methodName(method.getName())
+                        .build())
+                .reference(ScheduledMethodReference.builder()
+                        .beanName(taskKey)
+                        .bean(bean)
+                        .method(method)
+                        .build())
+                .build();
+    }
+
+    private static class SampleScheduledBean {
+
+        public void run() {
+        }
+
+    }
+
 }

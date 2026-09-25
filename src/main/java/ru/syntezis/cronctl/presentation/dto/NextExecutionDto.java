@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.UUID;
 
 /** Response DTO carrying the next scheduled execution time for a single task. */
 @Data
@@ -19,9 +18,9 @@ import java.util.UUID;
 @Schema(description = "Next scheduled execution time for a task")
 public class NextExecutionDto {
 
-    @JsonProperty("task_id")
-    @Schema(description = "Task identifier")
-    private UUID taskId;
+    @JsonProperty("task_key")
+    @Schema(description = "Stable task key", example = "billing.reconciliation")
+    private String taskKey;
 
     @JsonProperty("next_execution_at")
     @Nullable

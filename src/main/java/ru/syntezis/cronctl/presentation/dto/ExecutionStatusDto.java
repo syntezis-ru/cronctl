@@ -7,53 +7,89 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jspecify.annotations.Nullable;
+import ru.syntezis.cronctl.enums.ExecutionSource;
+import ru.syntezis.cronctl.enums.RetryTrigger;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 
 import java.time.Instant;
 import java.util.UUID;
 
-/** Response DTO describing the current state of a single async task execution. */
+/** Unified representation of an automatic or manual task execution. */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Current state of an async task execution")
+@Schema(description = "Tracked task execution")
 public class ExecutionStatusDto {
 
     @JsonProperty("execution_id")
-    @Schema(description = "Unique ID of this execution")
     private UUID executionId;
 
-    @JsonProperty("task_id")
-    @Schema(description = "ID of the executed task")
-    private UUID taskId;
+    @JsonProperty("task_key")
+    private String taskKey;
+
+    @JsonProperty("source")
+    private ExecutionSource source;
 
     @JsonProperty("status")
-    @Schema(description = "Current execution status")
     private TaskExecutionStatus status;
 
-    @JsonProperty("submitted_at")
-    @Schema(description = "Timestamp when the execution was submitted")
-    private Instant submittedAt;
+    @JsonProperty("node_id")
+    private String nodeId;
+
+    @JsonProperty("created_at")
+    private Instant createdAt;
+
+    @JsonProperty("queued_at")
+    @Nullable
+    private Instant queuedAt;
+
+    @JsonProperty("planned_at")
+    @Nullable
+    private Instant plannedAt;
 
     @JsonProperty("started_at")
     @Nullable
-    @Schema(description = "Timestamp when execution started; null if still pending")
     private Instant startedAt;
 
     @JsonProperty("finished_at")
     @Nullable
-    @Schema(description = "Timestamp when execution finished; null if still running")
     private Instant finishedAt;
 
-    @JsonProperty("execution_duration_mills")
+    @JsonProperty("start_delay_ms")
     @Nullable
-    @Schema(description = "Execution duration in milliseconds; null if not yet finished")
-    private Long executionDurationMills;
+    private Long startDelayMs;
 
-    @JsonProperty("fail_details")
+    @JsonProperty("duration_ms")
     @Nullable
-    @Schema(description = "Failure details; present only when status is FAILED")
-    private FailDetailsDto failDetails;
+    private Long durationMs;
+
+    @JsonProperty("status_reason")
+    @Nullable
+    private String statusReason;
+
+    @JsonProperty("parent_execution_id")
+    @Nullable
+    private UUID parentExecutionId;
+
+    @JsonProperty("root_execution_id")
+    private UUID rootExecutionId;
+
+    @JsonProperty("retry_series_id")
+    private UUID retrySeriesId;
+
+    @JsonProperty("attempt")
+    private int attempt;
+
+    @JsonProperty("retry_trigger")
+    @Nullable
+    private RetryTrigger retryTrigger;
+
+    @JsonProperty("retryable")
+    private boolean retryable;
+
+    @JsonProperty("error")
+    @Nullable
+    private FailDetailsDto error;
 
 }

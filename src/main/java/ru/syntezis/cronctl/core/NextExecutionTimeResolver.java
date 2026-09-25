@@ -6,6 +6,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.config.ScheduledTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.springframework.util.ClassUtils;
+import ru.syntezis.cronctl.core.execution.PlannedExecutionTracker;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -31,6 +32,8 @@ public class NextExecutionTimeResolver {
 
     private final ObjectProvider<ScheduledTaskHolder> scheduledTaskHolderProvider;
     private final StateToggler stateToggler;
+    private final PlannedExecutionTracker plannedExecutionTracker;
+    private final ScheduledTaskNextExecutionResolver scheduledTaskNextExecutionResolver;
 
     /**
      * Returns the next execution time for the given task, or {@code null} if it cannot be determined.
@@ -48,9 +51,14 @@ public class NextExecutionTimeResolver {
             return ScheduleUtils.computeNextExecutionAt(schedule);
         }
 
-        Optional<Instant> managedNextExecution = stateToggler.findManagedNextExecutionAt(task.getId());
+        Optional<Instant> managedNextExecution = stateToggler.findManagedNextExecutionAt(task.getTaskKey());
         if (managedNextExecution.isPresent()) {
             return managedNextExecution.get();
+        }
+
+        Instant trackedNextExecution = plannedExecutionTracker.getPlannedAt(task.getTaskKey());
+        if (trackedNextExecution != null) {
+            return trackedNextExecution;
         }
 
         List<ScheduledTask> matchingTasks = scheduledTaskHolderProvider.orderedStream()
@@ -63,7 +71,7 @@ public class NextExecutionTimeResolver {
         }
 
         return matchingTasks.stream()
-                .map(ScheduledTask::nextExecution)
+                .map(scheduledTaskNextExecutionResolver::resolve)
                 .filter(Objects::nonNull)
                 .min(Comparator.naturalOrder())
                 .orElse(null);

@@ -8,8 +8,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.UUID;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,17 +27,17 @@ class CronctlApiSecuredAccessTest {
 
     @Test
     void executeTask_SecuredAccess_NoAuth_Returns403() throws Exception {
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/execute", "missing.task"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void disableTask_SecuredAccess_NoAuth_Returns403() throws Exception {
         // Given
-        UUID taskId = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", taskId));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/disable", taskKey));
 
         // Then
         actual.andExpect(status().isForbidden());
@@ -48,10 +46,10 @@ class CronctlApiSecuredAccessTest {
     @Test
     void enableTask_SecuredAccess_NoAuth_Returns403() throws Exception {
         // Given
-        UUID taskId = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", taskId));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/enable", taskKey));
 
         // Then
         actual.andExpect(status().isForbidden());
@@ -67,7 +65,7 @@ class CronctlApiSecuredAccessTest {
     @Test
     @WithMockUser
     void executeTask_SecuredAccess_WithAuth_UnknownId_Returns404() throws Exception {
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", UUID.randomUUID()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/execute", "missing.task"))
                 .andExpect(status().isNotFound());
     }
 }

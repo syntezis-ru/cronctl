@@ -4,6 +4,7 @@
 #   - Custom API path to avoid conflicts with application routes
 #   - Authentication required for both the API and Swagger UI
 #   - Swagger group name aligned with the custom path
+#   - Explicit history bounds and a stable node identity
 
 cronctl:
   api:
@@ -13,3 +14,8 @@ cronctl:
     public-access: false
     group: task-management
     paths-to-match: /manage/tasks/**
+  history:
+    max-entries: 20000
+    retention: 14d
+    cleanup-interval: 10m
+    node-id: ${HOSTNAME:task-service-local}

@@ -11,11 +11,11 @@ jobs:
   qodana:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       checks: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
@@ -30,4 +30,3 @@ jobs:
           use-annotations: true
           upload-result: true
           push-fixes: 'none'
-          args: --fail-threshold 0

@@ -12,8 +12,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.core.Cronctl;
 
-import java.util.UUID;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,27 +28,27 @@ class CronctlNextExecutionControllerTest {
 
     @Test
     void getNextExecutionTime_UnknownId_Returns404() throws Exception {
-        mockMvc.perform(get("/api/cronctl/tasks/{id}/next-execution", UUID.randomUUID()))
+        mockMvc.perform(get("/api/cronctl/tasks/{taskKey}/next-execution", "missing.task"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void getNextExecutionTime_CronTask_Returns200AndNextExecutionAtIsPresent() throws Exception {
-        final UUID id = cronTaskId();
+        final String taskKey = cronTaskKey();
 
-        mockMvc.perform(get("/api/cronctl/tasks/{id}/next-execution", id))
+        mockMvc.perform(get("/api/cronctl/tasks/{taskKey}/next-execution", taskKey))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.task_id").value(id.toString()))
+                .andExpect(jsonPath("$.task_key").value(taskKey))
                 .andExpect(jsonPath("$.next_execution_at").isNotEmpty());
     }
 
     @Test
     void getNextExecutionTime_FixedRateTask_Returns200AndNextExecutionAtIsPresent() throws Exception {
-        final UUID id = fixedRateTaskId();
+        final String taskKey = fixedRateTaskKey();
 
-        mockMvc.perform(get("/api/cronctl/tasks/{id}/next-execution", id))
+        mockMvc.perform(get("/api/cronctl/tasks/{taskKey}/next-execution", taskKey))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.task_id").value(id.toString()))
+                .andExpect(jsonPath("$.task_key").value(taskKey))
                 .andExpect(jsonPath("$.next_execution_at").isNotEmpty());
     }
 
@@ -82,20 +80,20 @@ class CronctlNextExecutionControllerTest {
                 .andExpect(jsonPath("$.tasks[0].timeout_seconds").value(expected));
     }
 
-    private UUID cronTaskId() {
+    private String cronTaskKey() {
         return cronctl.getAllTasks().stream()
                 .filter(task -> "next-exec-cron".equals(task.getLabel()))
                 .findFirst()
                 .orElseThrow()
-                .getId();
+                .getTaskKey();
     }
 
-    private UUID fixedRateTaskId() {
+    private String fixedRateTaskKey() {
         return cronctl.getAllTasks().stream()
                 .filter(task -> "next-exec-fixed".equals(task.getLabel()))
                 .findFirst()
                 .orElseThrow()
-                .getId();
+                .getTaskKey();
     }
 
     @TestConfiguration

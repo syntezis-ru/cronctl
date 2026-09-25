@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
+import ru.syntezis.cronctl.core.execution.PlannedExecutionTracker;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -15,7 +16,6 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,6 +29,12 @@ class NextExecutionTimeResolverTest {
 
     @Mock
     private StateToggler stateToggler;
+
+    @Mock
+    private PlannedExecutionTracker plannedExecutionTracker;
+
+    @Mock
+    private ScheduledTaskNextExecutionResolver scheduledTaskNextExecutionResolver;
 
     @InjectMocks
     private NextExecutionTimeResolver underTest;
@@ -53,7 +59,7 @@ class NextExecutionTimeResolverTest {
         // Given
         final Instant expected = Instant.parse("2026-07-16T10:00:00Z");
         Task task = buildTask(true, null);
-        when(stateToggler.findManagedNextExecutionAt(task.getId()))
+        when(stateToggler.findManagedNextExecutionAt(task.getTaskKey()))
                 .thenReturn(Optional.of(expected));
 
         // When
@@ -63,6 +69,22 @@ class NextExecutionTimeResolverTest {
         assertThat(actual)
                 .isEqualTo(expected);
 
+        verifyNoInteractions(scheduledTaskHolderProvider);
+    }
+
+    @Test
+    void computeNextExecutionAt_TrackedFixedRateSchedule_TrackedExecutionInstant() {
+        // Given
+        final Instant expected = Instant.parse("2026-07-16T10:00:00Z");
+        Task task = buildTask(true, null);
+        when(stateToggler.findManagedNextExecutionAt(task.getTaskKey())).thenReturn(Optional.empty());
+        when(plannedExecutionTracker.getPlannedAt(task.getTaskKey())).thenReturn(expected);
+
+        // When
+        final Instant actual = underTest.computeNextExecutionAt(task);
+
+        // Then
+        assertThat(actual).isEqualTo(expected);
         verifyNoInteractions(scheduledTaskHolderProvider);
     }
 
@@ -85,14 +107,14 @@ class NextExecutionTimeResolverTest {
         assertThat(actual)
                 .isEqualTo(expected);
 
-        verifyNoInteractions(stateToggler, scheduledTaskHolderProvider);
+        verifyNoInteractions(stateToggler, plannedExecutionTracker, scheduledTaskHolderProvider);
     }
 
     private Task buildTask(boolean enabled, ScheduleDetails schedule) {
         return Task.builder()
                 .enabled(enabled)
                 .details(ScheduledMethodDetails.builder()
-                        .id(UUID.randomUUID())
+                        .taskKey("test.task")
                         .schedule(schedule)
                         .build()
                 )

@@ -61,8 +61,9 @@ public class ScheduleAnnotationBeanPostProcessor implements BeanPostProcessor, E
 
         methods.forEach(m -> {
             Task task = processor.process(bean, beanName, m, embeddedValueResolver);
-            registry.add(task.getId(), task);
-            log.info("Scheduled method: {} has been registered with id: {}", task.getDetails().getMethodName(), task.getId());
+            registry.add(task.getTaskKey(), task);
+            log.info("Scheduled method: {} has been registered with task key: {}",
+                    task.getDetails().getMethodName(), task.getTaskKey());
         });
 
         log.debug("Finished processing bean: {}", beanName);

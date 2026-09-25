@@ -5,7 +5,6 @@ import ru.syntezis.cronctl.domain.task.Task;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Main facade for managing registered {@code @Scheduled} tasks.
@@ -51,20 +50,20 @@ public class Cronctl {
     /**
      * Checks whether a task with the given id is registered.
      *
-     * @param id task UUID to look up
+     * @param taskKey stable task key to look up
      * @return {@code true} if the task is registered, {@code false} otherwise
      */
-    public boolean taskExists(UUID id) {
-        return registry.contains(id);
+    public boolean taskExists(String taskKey) {
+        return registry.contains(taskKey);
     }
 
     /**
-     * Finds a registered task by its UUID.
+     * Finds a registered task by its stable key.
      *
-     * @param id task UUID to look up
+     * @param taskKey stable task key to look up
      * @return an {@link Optional} containing the task, or empty if not found
      */
-    public Optional<Task> getById(UUID id) {
-        return registry.getById(id);
+    public Optional<Task> getById(String taskKey) {
+        return registry.getById(taskKey);
     }
 }

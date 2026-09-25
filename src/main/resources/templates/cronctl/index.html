@@ -153,23 +153,60 @@
         <section class="view-panel" id="executions-panel" role="tabpanel" aria-labelledby="executions-tab" hidden>
             <div class="section-heading section-heading--split">
                 <div>
-                    <p class="eyebrow">Manual work</p>
-                    <h2>Tracked executions</h2>
-                    <p>Latest 100 async runs, newest first.</p>
+                    <p class="eyebrow">Execution ledger</p>
+                    <h2>Automatic and manual history</h2>
+                    <p>Inspect what was planned, what actually started, and where every invocation ran.</p>
                 </div>
-                <label class="compact-filter">
+                <button class="button button--quiet" id="retry-all-failed" type="button">Retry all failed</button>
+            </div>
+
+            <form class="execution-filters" id="execution-filters" role="search">
+                <label>
+                    <span>Task</span>
+                    <select id="execution-task-filter">
+                        <option value="">All tasks</option>
+                    </select>
+                </label>
+                <label>
                     <span>Status</span>
                     <select id="execution-filter">
-                        <option value="">All</option>
-                        <option value="PENDING">Pending</option>
+                        <option value="">All statuses</option>
+                        <option value="CREATED">Created</option>
+                        <option value="QUEUED">Queued</option>
                         <option value="RUNNING">Running</option>
                         <option value="SUCCEEDED">Succeeded</option>
                         <option value="FAILED">Failed</option>
                         <option value="CANCELLED">Cancelled</option>
                         <option value="TIMED_OUT">Timed out</option>
+                        <option value="SKIPPED">Skipped</option>
                     </select>
                 </label>
-            </div>
+                <label>
+                    <span>Source</span>
+                    <select id="execution-source-filter">
+                        <option value="">All sources</option>
+                        <option value="SCHEDULED">Scheduled</option>
+                        <option value="MANUAL_SYNC">Manual sync</option>
+                        <option value="MANUAL_ASYNC">Manual async</option>
+                        <option value="RETRY">Retry</option>
+                        <option value="CATCH_UP">Catch-up</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Node</span>
+                    <select id="execution-node-filter">
+                        <option value="">All nodes</option>
+                    </select>
+                </label>
+                <label>
+                    <span>From</span>
+                    <input id="execution-from-filter" type="datetime-local">
+                </label>
+                <label>
+                    <span>To</span>
+                    <input id="execution-to-filter" type="datetime-local">
+                </label>
+            </form>
 
             <div class="execution-list" id="execution-list" aria-live="polite" aria-busy="true">
                 <div class="loading-state">
@@ -177,6 +214,11 @@
                     <p>Reading execution history…</p>
                 </div>
             </div>
+            <nav class="pagination" id="execution-pagination" aria-label="Execution history pages" hidden>
+                <button class="button button--quiet" id="execution-previous" type="button">Previous</button>
+                <span id="execution-page-label">Page 1</span>
+                <button class="button button--quiet" id="execution-next" type="button">Next</button>
+            </nav>
         </section>
     </main>
 
