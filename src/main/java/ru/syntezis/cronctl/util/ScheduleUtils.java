@@ -4,9 +4,11 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringValueResolver;
 import ru.syntezis.cronctl.domain.scheduled.ScheduleDetails;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -37,7 +39,7 @@ public class ScheduleUtils {
      */
     public static ScheduleDetails assembleScheduleDetails(Scheduled annotation, @Nullable StringValueResolver resolver) {
         return ScheduleDetails.builder()
-                .scheduler(resolve(resolver, annotation.scheduler()))
+                .scheduler(resolve(resolver, scheduler(annotation)))
                 .cron(resolve(resolver, annotation.cron()))
                 .fixedDelay(annotation.fixedDelay())
                 .fixedDelayString(resolve(resolver, annotation.fixedDelayString()))
@@ -59,6 +61,11 @@ public class ScheduleUtils {
      * @return next execution timestamp, or {@code null} if not computable
      */
     public static @Nullable Instant computeNextExecutionAt(ScheduleDetails schedule) {
+        return computeNextExecutionAt(schedule, Instant.now());
+    }
+
+    /** Computes the next cron execution strictly after the supplied instant. */
+    public static @Nullable Instant computeNextExecutionAt(ScheduleDetails schedule, Instant after) {
         String cron = schedule.getCron();
         if (cron == null || cron.isEmpty()) {
             return null;
@@ -67,7 +74,7 @@ public class ScheduleUtils {
             CronExpression expression = CronExpression.parse(cron);
             String zone = schedule.getZone();
             ZoneId zoneId = (zone != null && !zone.isEmpty()) ? ZoneId.of(zone) : ZoneId.systemDefault();
-            ZonedDateTime next = expression.next(ZonedDateTime.now(zoneId));
+            ZonedDateTime next = expression.next(after.atZone(zoneId));
             return next != null ? next.toInstant() : null;
         } catch (IllegalArgumentException e) {
             return null;
@@ -81,5 +88,14 @@ public class ScheduleUtils {
 
         String resolved = resolver.resolveStringValue(value);
         return resolved != null ? resolved : value;
+    }
+
+    private static String scheduler(Scheduled annotation) {
+        Method method = ReflectionUtils.findMethod(Scheduled.class, "scheduler");
+        if (method == null) {
+            return "";
+        }
+        Object value = ReflectionUtils.invokeMethod(method, annotation);
+        return value instanceof String scheduler ? scheduler : "";
     }
 }

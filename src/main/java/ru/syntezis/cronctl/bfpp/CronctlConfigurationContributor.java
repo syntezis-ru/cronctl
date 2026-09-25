@@ -57,6 +57,10 @@ public class CronctlConfigurationContributor implements BeanFactoryPostProcessor
         putIfPresent(map, "cronctl.executor.thread-pool-size", config.getExecutorThreadPoolSize());
         putIfPresent(map, "cronctl.executor.queue-capacity", config.getExecutorQueueCapacity());
         putIfPresent(map, "cronctl.executor.timeout-seconds", config.getExecutorTimeoutSeconds());
+        putIfPresent(map, "cronctl.history.max-entries", config.getHistoryMaxEntries());
+        putIfPresent(map, "cronctl.history.retention", config.getHistoryRetention());
+        putIfPresent(map, "cronctl.history.cleanup-interval", config.getHistoryCleanupInterval());
+        putIfPresent(map, "cronctl.history.node-id", config.getHistoryNodeId());
         return map;
     }
 

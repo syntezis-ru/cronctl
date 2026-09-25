@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import ru.syntezis.cronctl.annotation.CronctlTask;
@@ -15,7 +16,6 @@ import ru.syntezis.cronctl.domain.task.Task;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class CronctlToggleControllerTest {
 
     private static final Duration WAIT_TIMEOUT = Duration.ofSeconds(3);
@@ -46,11 +47,11 @@ class CronctlToggleControllerTest {
         await(() -> toggleScheduler.executionCount() > 0);
 
         // When
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", task.getId()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/disable", task.getTaskKey()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(false))
                 .andExpect(jsonPath("$.toggling_enabled").value(true));
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/execute", task.getId()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/execute", task.getTaskKey()))
                 .andExpect(status().isOk());
 
         // Then
@@ -62,18 +63,18 @@ class CronctlToggleControllerTest {
                 .isEqualTo(expected);
 
         // When
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", task.getId())
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/disable", task.getTaskKey())
                         .param("interrupt", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(false));
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", task.getId()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/enable", task.getTaskKey()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(true))
                 .andExpect(jsonPath("$.toggling_enabled").value(true));
 
         // Then
         await(() -> toggleScheduler.executionCount() > actual);
-        mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", task.getId()))
+        mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/enable", task.getTaskKey()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.enabled").value(true));
     }
@@ -81,10 +82,10 @@ class CronctlToggleControllerTest {
     @Test
     void disable_UnknownTask_Returns404() throws Exception {
         // Given
-        UUID taskId = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", taskId));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/disable", taskKey));
 
         // Then
         actual.andExpect(status().isNotFound());
@@ -93,10 +94,10 @@ class CronctlToggleControllerTest {
     @Test
     void enable_UnknownTask_Returns404() throws Exception {
         // Given
-        UUID taskId = UUID.randomUUID();
+        String taskKey = "missing.task";
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", taskId));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/enable", taskKey));
 
         // Then
         actual.andExpect(status().isNotFound());
@@ -108,7 +109,7 @@ class CronctlToggleControllerTest {
         Task task = togglingDisabledTask();
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/disable", task.getId()));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/disable", task.getTaskKey()));
 
         // Then
         actual.andExpect(status().isConflict());
@@ -120,7 +121,7 @@ class CronctlToggleControllerTest {
         Task task = togglingDisabledTask();
 
         // When
-        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{id}/enable", task.getId()));
+        final ResultActions actual = mockMvc.perform(post("/api/cronctl/tasks/{taskKey}/enable", task.getTaskKey()));
 
         // Then
         actual.andExpect(status().isConflict());

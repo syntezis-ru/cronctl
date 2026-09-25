@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 import ru.syntezis.cronctl.enums.ScanType;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -78,5 +79,21 @@ public class CronctlConfiguration {
     /** Overrides {@code cronctl.executor.timeout-seconds}. */
     @Nullable
     private final Long executorTimeoutSeconds;
+
+    /** Overrides {@code cronctl.history.max-entries}. */
+    @Nullable
+    private final Integer historyMaxEntries;
+
+    /** Overrides {@code cronctl.history.retention}. */
+    @Nullable
+    private final Duration historyRetention;
+
+    /** Overrides {@code cronctl.history.cleanup-interval}. */
+    @Nullable
+    private final Duration historyCleanupInterval;
+
+    /** Overrides {@code cronctl.history.node-id}. */
+    @Nullable
+    private final String historyNodeId;
 
 }

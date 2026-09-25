@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import ru.syntezis.cronctl.annotation.CronctlTask;
+import ru.syntezis.cronctl.enums.RetryBackoff;
 
 import java.util.concurrent.TimeUnit;
 
@@ -27,7 +28,10 @@ public class AnnotatedScheduler {
     @CronctlTask(
             label = "Send Notifications",
             description = "Dispatches pending notifications to users",
-            group = "notifications"
+            group = "notifications",
+            retries = 2,
+            retryDelay = "PT10S",
+            retryBackoff = RetryBackoff.EXPONENTIAL
     )
     @Scheduled(fixedRate = 1L, timeUnit = TimeUnit.MINUTES)
     public void sendNotification() {

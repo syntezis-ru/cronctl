@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import ru.syntezis.cronctl.annotation.CronctlTask;
+import ru.syntezis.cronctl.enums.ConcurrencyPolicy;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class Scheduler {
 
     @CronctlTask(
+            id = "reporting.simple-job",
             label = "Simple Job",
             description = "Runs every 5 minutes, reads cron from properties",
             group = "reporting",
@@ -34,7 +36,9 @@ public class Scheduler {
             description = "Long-running job, sleeps 6 minutes to simulate work",
             group = "processing",
             tags = {"processing", "heavy", "critical"},
-            timeout = CronctlTask.NO_TIMEOUT
+            timeout = CronctlTask.NO_TIMEOUT,
+            concurrency = ConcurrencyPolicy.SKIP,
+            maxConcurrentExecutions = 1
     )
     @Scheduled(fixedRate = 10L, timeUnit = TimeUnit.MINUTES)
     public void runHeavyJob() throws InterruptedException {

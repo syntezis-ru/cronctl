@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.0] — 2026-07-21
+
+### Added
+
+- Stable string task keys via `@CronctlTask(id = "...")`; blank IDs are derived from the
+  application name, bean name, and method signature. Duplicate task keys fail registration.
+- Task enable/disable endpoints with the `interrupt` option and per-task `togglingEnabled` policy.
+- Optional Thymeleaf operator UI and an interactive GitHub Pages demo.
+- Unified history for native Spring scheduled invocations and manual sync/async invocations:
+    - sources: `SCHEDULED`, `MANUAL_SYNC`, `MANUAL_ASYNC`, and `RETRY`, with `CATCH_UP` reserved;
+    - lifecycle: `CREATED → QUEUED → RUNNING → SUCCEEDED | FAILED | CANCELLED | TIMED_OUT | SKIPPED`;
+    - planned time, actual start, start drift, duration, exception type/message, and node ID;
+    - server-side filters and pagination on `GET /api/cronctl/executions`;
+    - scheduled-only health with last status, last success, and consecutive failure count.
+- Pluggable `ExecutionStore` SPI with a bounded default in-memory implementation and periodic
+  retention cleanup through `deleteExpired(Instant)`.
+- History configuration: `cronctl.history.max-entries`, `cronctl.history.retention`,
+  `cronctl.history.cleanup-interval`, and `cronctl.history.node-id`.
+- Pluggable `TaskStateStore` SPI with process-local in-memory storage by default and startup
+  restoration for persistent implementations supplied by applications.
+- A persisted startup pause guard that records any raced automatic invocation as
+  `SCHEDULED/SKIPPED` with `status_reason=PAUSED` before user code can run.
+- Process-local concurrency policies for automatic and manual executions through
+  `@CronctlTask(concurrency = ..., maxConcurrentExecutions = ...)`: `ALLOW`, `SKIP`, `QUEUE`,
+  and cooperative `CANCEL_PREVIOUS`.
+- Opt-in task retry policies with fixed/exponential backoff, maximum delay, jitter, retryable and
+  non-retryable exception filters, persistent queued-retry restoration, execution lineage, and
+  automatic `ExecutionSource.RETRY` history.
+- Manual `Retry` and `Retry all failed` REST/UI actions with leaf-execution duplicate protection.
+
+### Changed
+
+- Manual sync, manual async, and automatic executions now use the same response model.
+- Async status `PENDING` was replaced by the explicit `CREATED` and `QUEUED` states.
+- Execution timestamps are ISO-8601 instants and duration/drift fields use the `_ms` suffix.
+- `@CronctlTask(timeout = 0)` explicitly means “inherit the global timeout”; use
+  `CronctlTask.NO_TIMEOUT` (`-1`) to disable the timeout for one task.
+- `POST /tasks/{taskKey}/execute-async` is the primary async endpoint; the older
+  `POST /tasks/{taskKey}/executions` route remains as a deprecated alias.
+- The default terminal history limit is now 1,000 entries; maximum size is enforced on save,
+  while age-based retention runs at startup and every `cronctl.history.cleanup-interval`.
+
+### Fixed
+
+- Added runtime compatibility with Spring Boot 3.0.5 / Spring Framework 6.0 while preserving
+  newer scheduler routing and observation support on Spring Framework 6.1+.
+- Automatic scheduled history now reports `UNAVAILABLE` on Spring Framework 6.0 instead of
+  incorrectly reporting active tracking.
+- Swagger configuration no longer loads when springdoc is absent from the consumer classpath.
+- Fixed-rate and fixed-delay next-execution values now use live scheduler futures.
+- Duplicate bean instances exposing the same scheduled class and method are reported as
+  `AMBIGUOUS` instead of attributing automatic executions to the wrong task.
+- Task state changes use per-task `java.util.concurrent.locks.Lock` instances.
+
+---
+
+## [0.0.4] — 2026-07-17
+
+### Added
+
+- Optional Thymeleaf operator UI for inspecting schedules and triggering tasks.
+- Task enable/disable endpoints with opt-in `@CronctlTask(togglingEnabled = true)` support.
+- Per-task timeout constants that distinguish the global timeout from no timeout.
+- `POST /tasks/{id}/execute-async` as the primary asynchronous execution endpoint.
+
+### Changed
+
+- Consolidated task operations and async execution routes under `CronctlAPI`.
+- Improved next-execution resolution for cron, fixed-rate, and fixed-delay schedules.
+
+---
+
 ## [0.0.3] — 2026-06-02
 
 ### Added
@@ -116,6 +188,8 @@ New properties introduced in this release:
 - Java 21+
 - Spring Boot 3.x
 
+[0.1.0]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.1.0
+[0.0.4]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.4
 [0.0.3]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.3
 [0.0.2]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.2
 [0.0.1]: https://github.com/syntezis-ru/cronctl/releases/tag/v0.0.1

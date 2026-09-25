@@ -1,6 +1,7 @@
 package ru.syntezis.cronctl.core;
 
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,15 +10,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.Trigger;
-import org.springframework.scheduling.config.DelayedTask;
 import org.springframework.scheduling.config.FixedDelayTask;
 import org.springframework.scheduling.config.FixedRateTask;
 import org.springframework.scheduling.config.ScheduledTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
-import org.springframework.scheduling.config.TaskSchedulerRouter;
 import org.springframework.scheduling.config.TriggerTask;
 import org.springframework.util.ClassUtils;
+import ru.syntezis.cronctl.core.execution.ExecutionLifecycleService;
+import ru.syntezis.cronctl.core.execution.PlannedExecutionTracker;
+import ru.syntezis.cronctl.core.state.TaskStateStore;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
@@ -34,7 +37,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -44,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,7 +66,10 @@ class StateTogglerTest {
     private ScheduledTask scheduledTask;
 
     @Mock
-    private TaskSchedulerRouter taskSchedulerRouter;
+    private CompatibleTaskScheduler compatibleTaskScheduler;
+
+    @Mock
+    private TaskScheduler taskScheduler;
 
     @Mock
     private ScheduledFuture<Object> scheduledFuture;
@@ -74,8 +80,23 @@ class StateTogglerTest {
     @Mock
     private Trigger trigger;
 
+    @Mock
+    private ExecutionLifecycleService lifecycleService;
+
+    @Mock
+    private PlannedExecutionTracker plannedExecutionTracker;
+
+    @Mock
+    private TaskStateStore taskStateStore;
+
     @InjectMocks
     private StateToggler underTest;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(compatibleTaskScheduler.getTaskScheduler()).thenReturn(taskScheduler);
+        lenient().when(taskScheduler.getClock()).thenReturn(Clock.systemUTC());
+    }
 
     @Test
     void enable_EnabledTask_TaskReturnedWithoutChanges() throws NoSuchMethodException {
@@ -91,7 +112,8 @@ class StateTogglerTest {
                 .isSameAs(task);
         assertThat(actual.isEnabled())
                 .isEqualTo(expected);
-        verifyNoInteractions(taskSchedulerRouter);
+        verifyNoInteractions(taskScheduler);
+        verify(taskStateStore).clearPaused(task.getTaskKey());
     }
 
     @Test
@@ -106,7 +128,7 @@ class StateTogglerTest {
         assertThatThrownBy(actual)
                 .isInstanceOf(DisabledTogglingViolationException.class)
                 .hasMessage("Task is not toggling enabled");
-        verifyNoInteractions(taskSchedulerRouter);
+        verifyNoInteractions(taskScheduler);
     }
 
     @Test
@@ -123,6 +145,7 @@ class StateTogglerTest {
                 .hasMessageContaining("No saved schedule definition found");
         assertThat(task.isEnabled())
                 .isFalse();
+        verifyNoInteractions(taskStateStore);
     }
 
     @Test
@@ -155,6 +178,7 @@ class StateTogglerTest {
                 .hasMessage("ScheduledTaskHolder is not available");
         assertThat(task.isEnabled())
                 .isTrue();
+        verifyNoInteractions(taskStateStore);
     }
 
     @Test
@@ -190,12 +214,13 @@ class StateTogglerTest {
                 .isSameAs(task);
         assertThat(actual.isEnabled())
                 .isEqualTo(expected);
-        verifyNoInteractions(scheduledTaskHolderProvider, taskSchedulerRouter);
+        verifyNoInteractions(scheduledTaskHolderProvider, taskScheduler);
+        verify(taskStateStore).markPaused(task.getTaskKey());
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void disable_EnabledTask_TaskDisabled(boolean interruptIfRunning) throws NoSuchMethodException {
+    void disable_EnabledTask_TaskDisabled(boolean interrupt) throws NoSuchMethodException {
         // Given
         final boolean expected = false;
         Task task = buildTask(true, true);
@@ -203,14 +228,15 @@ class StateTogglerTest {
         configureMatchingScheduledTask(task, definition);
 
         // When
-        final Task actual = underTest.disable(task, interruptIfRunning);
+        final Task actual = underTest.disable(task, interrupt);
 
         // Then
         assertThat(actual)
                 .isSameAs(task);
         assertThat(actual.isEnabled())
                 .isEqualTo(expected);
-        verify(scheduledTask).cancel(interruptIfRunning);
+        verify(scheduledTask).cancel(interrupt);
+        verify(taskStateStore).markPaused(task.getTaskKey());
     }
 
     @Test
@@ -231,6 +257,7 @@ class StateTogglerTest {
                 .hasCause(expected);
         assertThat(task.isEnabled())
                 .isTrue();
+        verifyNoInteractions(taskStateStore);
     }
 
     @Test
@@ -241,7 +268,7 @@ class StateTogglerTest {
         Task task = buildTask(true, true);
         FixedRateTask definition = fixedRateTask(interval, Duration.ZERO);
         disableTask(task, definition);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleAtFixedRate(definition.getRunnable(), interval);
 
         // When
@@ -250,7 +277,8 @@ class StateTogglerTest {
         // Then
         assertThat(actual.isEnabled())
                 .isEqualTo(expected);
-        verify(taskSchedulerRouter).scheduleAtFixedRate(definition.getRunnable(), interval);
+        verify(taskScheduler).scheduleAtFixedRate(definition.getRunnable(), interval);
+        verify(taskStateStore).clearPaused(task.getTaskKey());
     }
 
     @Test
@@ -264,15 +292,15 @@ class StateTogglerTest {
         Task task = buildTask(true, true);
         FixedRateTask definition = fixedRateTask(interval, initialDelay);
         disableTask(task, definition);
-        when(taskSchedulerRouter.getClock()).thenReturn(clock);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        when(taskScheduler.getClock()).thenReturn(clock);
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleAtFixedRate(definition.getRunnable(), expected, interval);
 
         // When
         underTest.enable(task);
 
         // Then
-        verify(taskSchedulerRouter).scheduleAtFixedRate(definition.getRunnable(), expected, interval);
+        verify(taskScheduler).scheduleAtFixedRate(definition.getRunnable(), expected, interval);
         assertThat(task.isEnabled())
                 .isTrue();
     }
@@ -284,14 +312,14 @@ class StateTogglerTest {
         Task task = buildTask(true, true);
         FixedDelayTask definition = new FixedDelayTask(scheduledRunnable, interval, Duration.ZERO);
         disableTask(task, definition);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleWithFixedDelay(definition.getRunnable(), interval);
 
         // When
         underTest.enable(task);
 
         // Then
-        verify(taskSchedulerRouter).scheduleWithFixedDelay(definition.getRunnable(), interval);
+        verify(taskScheduler).scheduleWithFixedDelay(definition.getRunnable(), interval);
         assertThat(task.isEnabled())
                 .isTrue();
     }
@@ -302,14 +330,14 @@ class StateTogglerTest {
         Task task = buildTask(true, true);
         TriggerTask definition = new TriggerTask(scheduledRunnable, trigger);
         disableTask(task, definition);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .schedule(definition.getRunnable(), trigger);
 
         // When
         underTest.enable(task);
 
         // Then
-        verify(taskSchedulerRouter).schedule(definition.getRunnable(), trigger);
+        verify(taskScheduler).schedule(definition.getRunnable(), trigger);
         assertThat(task.isEnabled())
                 .isTrue();
     }
@@ -322,17 +350,17 @@ class StateTogglerTest {
         Duration initialDelay = Duration.ofSeconds(3);
         final Instant expected = now.plus(initialDelay);
         Task task = buildTask(true, true);
-        DelayedTask definition = new DelayedTask(scheduledRunnable, initialDelay);
+        TestDelayedTask definition = new TestDelayedTask(scheduledRunnable, initialDelay);
         disableTask(task, definition);
-        when(taskSchedulerRouter.getClock()).thenReturn(clock);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        when(taskScheduler.getClock()).thenReturn(clock);
+        doReturn(scheduledFuture).when(taskScheduler)
                 .schedule(definition.getRunnable(), expected);
 
         // When
         underTest.enable(task);
 
         // Then
-        verify(taskSchedulerRouter).schedule(definition.getRunnable(), expected);
+        verify(taskScheduler).schedule(definition.getRunnable(), expected);
         assertThat(task.isEnabled())
                 .isTrue();
     }
@@ -351,9 +379,9 @@ class StateTogglerTest {
                 scheduledTaskWithDefinition(secondScheduledTask, fixedDelayDefinition)
         ));
         underTest.disable(task, false);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleAtFixedRate(fixedRateDefinition.getRunnable(), interval);
-        when(taskSchedulerRouter.scheduleWithFixedDelay(fixedDelayDefinition.getRunnable(), interval))
+        when(taskScheduler.scheduleWithFixedDelay(fixedDelayDefinition.getRunnable(), interval))
                 .thenThrow(expected);
 
         // When
@@ -378,15 +406,15 @@ class StateTogglerTest {
         Task task = buildTask(true, true);
         FixedRateTask definition = fixedRateTask(interval, Duration.ZERO);
         disableTask(task, definition);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleAtFixedRate(definition.getRunnable(), interval);
         underTest.enable(task);
-        when(taskSchedulerRouter.getClock()).thenReturn(clock);
+        when(taskScheduler.getClock()).thenReturn(clock);
         when(scheduledFuture.isCancelled()).thenReturn(false);
         when(scheduledFuture.getDelay(TimeUnit.MILLISECONDS)).thenReturn(5_000L);
 
         // When
-        final Optional<Instant> actual = underTest.findManagedNextExecutionAt(task.getId());
+        final Optional<Instant> actual = underTest.findManagedNextExecutionAt(task.getTaskKey());
 
         // Then
         assertThat(actual)
@@ -394,13 +422,13 @@ class StateTogglerTest {
     }
 
     @Test
-    void shutdown_ResumedTask_ScheduleCancelledAndRouterDestroyed() throws NoSuchMethodException {
+    void shutdown_ResumedTask_ScheduleCancelled() throws NoSuchMethodException {
         // Given
         Duration interval = Duration.ofSeconds(10);
         Task task = buildTask(true, true);
         FixedRateTask definition = fixedRateTask(interval, Duration.ZERO);
         disableTask(task, definition);
-        doReturn(scheduledFuture).when(taskSchedulerRouter)
+        doReturn(scheduledFuture).when(taskScheduler)
                 .scheduleAtFixedRate(definition.getRunnable(), interval);
         underTest.enable(task);
 
@@ -409,7 +437,6 @@ class StateTogglerTest {
 
         // Then
         verify(scheduledFuture).cancel(false);
-        verify(taskSchedulerRouter).destroy();
     }
 
     private Task buildTask(boolean enabled, boolean togglingEnabled) throws NoSuchMethodException {
@@ -418,7 +445,7 @@ class StateTogglerTest {
                 .enabled(enabled)
                 .togglingEnabled(togglingEnabled)
                 .details(ScheduledMethodDetails.builder()
-                        .id(UUID.randomUUID())
+                        .taskKey("test.sampleScheduledBean.scheduledMethod()")
                         .methodName(method.getName())
                         .build()
                 )
@@ -440,12 +467,14 @@ class StateTogglerTest {
         underTest.disable(task, false);
     }
 
-    private void configureMatchingScheduledTask(Task task, org.springframework.scheduling.config.Task definition) {
+    private void configureMatchingScheduledTask(
+            Task task, org.springframework.scheduling.config.Task definition) {
         String runnableDescription = ClassUtils.getQualifiedMethodName(task.getReference().getMethod());
         configureScheduledTask(definition, runnableDescription);
     }
 
-    private void configureScheduledTask(org.springframework.scheduling.config.Task definition, String runnableDescription) {
+    private void configureScheduledTask(
+            org.springframework.scheduling.config.Task definition, String runnableDescription) {
         when(scheduledRunnable.toString()).thenReturn(runnableDescription);
         configureScheduledTasks(Set.of(scheduledTaskWithDefinition(scheduledTask, definition)));
     }
@@ -472,5 +501,20 @@ class StateTogglerTest {
         private void scheduledMethod() {
             // No-op.
         }
+    }
+
+    private static class TestDelayedTask extends org.springframework.scheduling.config.Task {
+
+        private final Duration initialDelay;
+
+        private TestDelayedTask(Runnable runnable, Duration initialDelay) {
+            super(runnable);
+            this.initialDelay = initialDelay;
+        }
+
+        public Duration getInitialDelayDuration() {
+            return initialDelay;
+        }
+
     }
 }

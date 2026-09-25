@@ -65,7 +65,7 @@
 
     <properties>
         <!-- Project revision -->
-        <revision>0.0.4</revision>
+        <revision>0.1.0</revision>
 
         <!-- System properties -->
         <java.version>17</java.version>

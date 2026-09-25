@@ -2,9 +2,8 @@
     "use strict";
 
     const apiBasePath = (document.body.dataset.apiBasePath || "/api/cronctl").replace(/\/$/, "");
-    const activeStatuses = new Set(["PENDING", "RUNNING"]);
+    const activeStatuses = new Set(["CREATED", "QUEUED", "RUNNING"]);
     const terminalFailureStatuses = new Set(["FAILED", "TIMED_OUT"]);
-    const maximumExecutions = 100;
     const transport = window.cronctlTransport;
     const connectionLabel = transport?.connectionLabel || "Live";
 
@@ -21,7 +20,17 @@
         errorRetry: document.querySelector("#error-retry"),
         errorTitle: document.querySelector("#error-title"),
         executionFilter: document.querySelector("#execution-filter"),
+        executionFilters: document.querySelector("#execution-filters"),
+        executionFromFilter: document.querySelector("#execution-from-filter"),
         executionList: document.querySelector("#execution-list"),
+        executionNext: document.querySelector("#execution-next"),
+        executionNodeFilter: document.querySelector("#execution-node-filter"),
+        executionPageLabel: document.querySelector("#execution-page-label"),
+        executionPagination: document.querySelector("#execution-pagination"),
+        executionPrevious: document.querySelector("#execution-previous"),
+        executionSourceFilter: document.querySelector("#execution-source-filter"),
+        executionTaskFilter: document.querySelector("#execution-task-filter"),
+        executionToFilter: document.querySelector("#execution-to-filter"),
         executionsTabCount: document.querySelector("#executions-tab-count"),
         groupFilter: document.querySelector("#group-filter"),
         interruptCheckbox: document.querySelector("#interrupt-checkbox"),
@@ -32,6 +41,7 @@
         metricFailed: document.querySelector("#metric-failed"),
         metricRegistered: document.querySelector("#metric-registered"),
         refreshButton: document.querySelector("#refresh-button"),
+        retryAllFailed: document.querySelector("#retry-all-failed"),
         stateFilter: document.querySelector("#state-filter"),
         taskFilters: document.querySelector("#task-filters"),
         taskList: document.querySelector("#task-list"),
@@ -44,6 +54,10 @@
     const state = {
         activeView: "tasks",
         executions: [],
+        executionPage: 0,
+        executionSize: 50,
+        executionTotal: 0,
+        executionHasNext: false,
         executionTimer: null,
         pendingConfirmation: null,
         tasks: [],
@@ -88,6 +102,7 @@
         const response = await request("/tasks");
         state.tasks = Array.isArray(response?.tasks) ? response.tasks : [];
         populateGroups();
+        populateExecutionTasks();
         renderTasks();
         renderCadenceRail();
         renderMetrics();
@@ -98,10 +113,24 @@
             elements.executionList.setAttribute("aria-busy", "true");
         }
 
-        const response = await request("/executions");
-        state.executions = (Array.isArray(response?.executions) ? response.executions : [])
-            .sort((left, right) => timestamp(right.submitted_at) - timestamp(left.submitted_at))
-            .slice(0, maximumExecutions);
+        const parameters = new URLSearchParams({
+            page: String(state.executionPage),
+            size: String(state.executionSize)
+        });
+        addFilter(parameters, "taskKey", elements.executionTaskFilter.value);
+        addFilter(parameters, "status", elements.executionFilter.value);
+        addFilter(parameters, "source", elements.executionSourceFilter.value);
+        addFilter(parameters, "nodeId", elements.executionNodeFilter.value);
+        addDateFilter(parameters, "from", elements.executionFromFilter.value);
+        addDateFilter(parameters, "to", elements.executionToFilter.value);
+
+        const response = await request(`/executions?${parameters}`);
+        state.executions = Array.isArray(response?.executions) ? response.executions : [];
+        state.executionTotal = Number(response?.total || 0);
+        state.executionPage = Number(response?.page || 0);
+        state.executionSize = Number(response?.size || 50);
+        state.executionHasNext = Boolean(response?.has_next);
+        populateExecutionNodes();
         renderExecutions();
         renderMetrics();
     }
@@ -219,7 +248,7 @@
     }
 
     function renderTaskCard(task) {
-        const taskId = task.details?.id || "";
+        const taskKey = task.task_key || "";
         const enabled = Boolean(task.enabled);
         const stateName = enabled ? "enabled" : "disabled";
         const stateLabel = enabled ? "Scheduled" : "Paused";
@@ -233,14 +262,29 @@
             ? `<span class="meta-token">+${task.tags.length - 4}</span>`
             : "";
         const toggleButton = task.toggling_enabled
-            ? `<button class="button ${toggleButtonClass}" type="button" data-action="${toggleAction}" data-task-id="${escapeHtml(taskId)}">${toggleLabel}</button>`
+            ? `<button class="button ${toggleButtonClass}" type="button" data-action="${toggleAction}" data-task-key="${escapeHtml(taskKey)}">${toggleLabel}</button>`
             : "";
         const nextExecution = task.next_execution_at
             ? `<time datetime="${escapeHtml(task.next_execution_at)}" title="${escapeHtml(formatDate(task.next_execution_at))}">${escapeHtml(formatRelative(task.next_execution_at))}</time>`
             : `<span>${escapeHtml(nextExecutionUnavailableLabel(task))}</span>`;
+        const health = task.scheduled_health || {};
+        const healthStatus = health.last_execution_status
+            ? `<span class="status-badge status-badge--${statusClass(health.last_execution_status)}">${escapeHtml(readableStatus(health.last_execution_status))}</span>`
+            : `<span class="health-readout__empty">No runs yet</span>`;
+        const failureCount = Number(health.consecutive_failures || 0);
+        const concurrencyPolicy = task.concurrency_policy || "ALLOW";
+        const concurrencyToken = concurrencyPolicy === "ALLOW"
+            ? ""
+            : `<span class="meta-token" title="Process-local concurrency policy">${escapeHtml(readableStatus(concurrencyPolicy))} · max ${escapeHtml(task.max_concurrent_executions || 1)}</span>`;
+        const retryToken = Number(task.retries || 0) > 0
+            ? `<span class="meta-token meta-token--retry" title="Automatic retry policy">Retry ${escapeHtml(task.retries)} · ${escapeHtml(readableStatus(task.retry_backoff || "FIXED"))} · ${escapeHtml(task.retry_delay || "PT1S")}</span>`
+            : "";
+        const trackingWarning = task.automatic_tracking_status === "AMBIGUOUS"
+            ? `<p class="tracking-warning" title="${escapeHtml(task.automatic_tracking_message || "Automatic tracking is ambiguous")}">Automatic history unavailable: duplicate scheduled bean target</p>`
+            : "";
 
         return `
-            <article class="task-card ${enabled ? "" : "is-disabled"}" data-task-id="${escapeHtml(taskId)}">
+            <article class="task-card ${enabled ? "" : "is-disabled"}" data-task-key="${escapeHtml(taskKey)}">
                 <div class="task-card__identity">
                     <div class="task-card__title-row">
                         <h3 title="${escapeHtml(task.label || "Unnamed task")}">${escapeHtml(task.label || "Unnamed task")}</h3>
@@ -249,7 +293,7 @@
                     <p class="task-card__description">${escapeHtml(task.description || task.details?.method_name || "No description")}</p>
                     <div class="task-card__meta">
                         <span class="meta-token">${escapeHtml(task.group || "default")}</span>
-                        ${tags}${remainingTags}
+                        ${tags}${remainingTags}${concurrencyToken}${retryToken}
                     </div>
                 </div>
                 <div class="schedule-readout">
@@ -260,64 +304,108 @@
                     <span class="next-run__label">Next execution</span>
                     ${nextExecution}
                 </div>
+                <div class="health-readout">
+                    <span class="next-run__label">Last scheduled run</span>
+                    <div>${healthStatus}</div>
+                    <small>${health.last_success_at ? `Last success ${escapeHtml(formatRelativePast(health.last_success_at))}` : "No successful run recorded"}</small>
+                    ${failureCount > 0 ? `<strong>${failureCount} consecutive failure${failureCount === 1 ? "" : "s"}</strong>` : ""}
+                </div>
                 <div class="task-actions">
                     ${toggleButton}
-                    <button class="button button--primary" type="button" data-action="run" data-task-id="${escapeHtml(taskId)}">Run async</button>
+                    <button class="button button--primary" type="button" data-action="run" data-task-key="${escapeHtml(taskKey)}">Run async</button>
                 </div>
+                ${trackingWarning}
             </article>`;
     }
 
     function renderExecutions() {
         elements.executionList.setAttribute("aria-busy", "false");
-        const statusFilter = elements.executionFilter.value;
-        const filteredExecutions = state.executions.filter(execution => !statusFilter || execution.status === statusFilter);
-        elements.executionsTabCount.textContent = String(state.executions.length);
+        elements.executionsTabCount.textContent = String(state.executionTotal);
 
-        if (filteredExecutions.length === 0) {
+        if (state.executions.length === 0) {
+            const hasFilters = Boolean(elements.executionTaskFilter.value
+                || elements.executionFilter.value
+                || elements.executionSourceFilter.value
+                || elements.executionNodeFilter.value
+                || elements.executionFromFilter.value
+                || elements.executionToFilter.value);
             elements.executionList.innerHTML = emptyState(
-                statusFilter ? "No executions with this status" : "No tracked executions yet",
-                statusFilter ? "Select another status to inspect the history." : "Run a task asynchronously to create a tracked execution."
+                hasFilters ? "No executions match these filters" : "No executions recorded yet",
+                hasFilters ? "Change a filter or widen the time range." : "Automatic and manual invocations will appear here."
             );
+            renderExecutionPagination();
             return;
         }
 
-        const taskLabels = new Map(state.tasks.map(task => [task.details?.id, task.label]));
-        elements.executionList.innerHTML = filteredExecutions.map(execution => {
-            const taskLabel = taskLabels.get(execution.task_id) || "Unknown task";
-            const canCancel = activeStatuses.has(execution.status);
-            const duration = execution.execution_duration_mills == null
+        const taskLabels = new Map(state.tasks.map(task => [task.task_key, task.label]));
+        elements.executionList.innerHTML = state.executions.map(execution => {
+            const taskLabel = taskLabels.get(execution.task_key) || "Unknown task";
+            const canCancel = (execution.source === "MANUAL_ASYNC" || execution.source === "RETRY")
+                && activeStatuses.has(execution.status);
+            const canRetry = Boolean(execution.retryable);
+            const retryLineage = execution.source === "RETRY"
+                ? `<span class="execution-card__attempt" title="Retry series ${escapeHtml(execution.retry_series_id || "")}">${escapeHtml(readableStatus(execution.retry_trigger || "AUTOMATIC"))} retry · attempt ${escapeHtml(execution.attempt || 1)}</span>`
+                : "";
+            const duration = execution.duration_ms == null
                 ? (execution.status === "RUNNING" ? "In progress" : "—")
-                : formatDuration(execution.execution_duration_mills);
-            const failure = execution.fail_details?.message
-                ? `<p class="failure-message">${escapeHtml(execution.fail_details.message)}</p>`
+                : formatDuration(execution.duration_ms);
+            const drift = execution.start_delay_ms == null
+                ? "Unknown"
+                : formatDrift(execution.start_delay_ms);
+            const failure = execution.error?.message
+                ? `<p class="failure-message"><strong>${escapeHtml(execution.error.type || "Execution failed")}</strong>${escapeHtml(execution.error.message)}</p>`
+                : "";
+            const reason = execution.status_reason
+                ? `<p class="execution-reason">${escapeHtml(readableStatus(execution.status_reason))}</p>`
                 : "";
 
             return `
                 <article class="execution-card" data-execution-id="${escapeHtml(execution.execution_id)}">
-                    <div>
+                    <div class="execution-card__identity">
                         <h3 title="${escapeHtml(taskLabel)}">${escapeHtml(taskLabel)}</h3>
                         <span class="execution-card__id" title="${escapeHtml(execution.execution_id)}">${escapeHtml(shortId(execution.execution_id))}</span>
+                        <div class="execution-card__origin">
+                            <span class="source-badge source-badge--${statusClass(execution.source)}">${escapeHtml(readableStatus(execution.source))}</span>
+                            <span title="${escapeHtml(execution.node_id)}">${escapeHtml(execution.node_id || "Unknown node")}</span>
+                            ${retryLineage}
+                        </div>
                     </div>
                     <div class="execution-card__state">
                         <span class="status-badge status-badge--${statusClass(execution.status)}">${escapeHtml(readableStatus(execution.status))}</span>
                         <span class="execution-card__duration">${escapeHtml(duration)}</span>
+                        ${reason}
                     </div>
-                    <div class="execution-card__timeline">
+                    <div class="execution-card__timeline" aria-label="Planned and actual start">
                         <div>
-                            <span>Submitted</span>
-                            <time class="execution-card__time" datetime="${escapeHtml(execution.submitted_at || "")}">${escapeHtml(formatDate(execution.submitted_at))}</time>
+                            <span>Planned</span>
+                            <time class="execution-card__time" datetime="${escapeHtml(execution.planned_at || "")}">${escapeHtml(formatDate(execution.planned_at))}</time>
                         </div>
                         <div>
-                            <span>Finished</span>
-                            <time class="execution-card__time" datetime="${escapeHtml(execution.finished_at || "")}">${escapeHtml(formatDate(execution.finished_at))}</time>
+                            <span>Started</span>
+                            <time class="execution-card__time" datetime="${escapeHtml(execution.started_at || "")}">${escapeHtml(formatDate(execution.started_at))}</time>
                         </div>
+                    </div>
+                    <div class="execution-card__drift">
+                        <span>Start drift</span>
+                        <strong class="${Number(execution.start_delay_ms) > 1000 ? "is-late" : ""}">${escapeHtml(drift)}</strong>
+                        <small>Created ${escapeHtml(formatRelativePast(execution.created_at))}</small>
                     </div>
                     <div class="execution-actions">
+                        ${canRetry ? `<button class="button button--quiet" type="button" data-action="retry-execution" data-execution-id="${escapeHtml(execution.execution_id)}">Retry</button>` : ""}
                         ${canCancel ? `<button class="button button--danger" type="button" data-action="cancel-execution" data-execution-id="${escapeHtml(execution.execution_id)}">Cancel</button>` : ""}
                     </div>
                     ${failure}
                 </article>`;
         }).join("");
+        renderExecutionPagination();
+    }
+
+    function renderExecutionPagination() {
+        const pageCount = Math.max(1, Math.ceil(state.executionTotal / state.executionSize));
+        elements.executionPagination.hidden = state.executionTotal <= state.executionSize;
+        elements.executionPrevious.disabled = state.executionPage === 0;
+        elements.executionNext.disabled = !state.executionHasNext;
+        elements.executionPageLabel.textContent = `Page ${state.executionPage + 1} of ${pageCount} · ${state.executionTotal.toLocaleString()} executions`;
     }
 
     function renderCadenceRail() {
@@ -347,7 +435,7 @@
         const active = state.executions.filter(execution => activeStatuses.has(execution.status)).length;
         const oneDayAgo = Date.now() - 86_400_000;
         const recentFailures = state.executions.filter(execution =>
-            terminalFailureStatuses.has(execution.status) && timestamp(execution.submitted_at) >= oneDayAgo
+            terminalFailureStatuses.has(execution.status) && timestamp(execution.created_at) >= oneDayAgo
         ).length;
 
         elements.metricRegistered.textContent = String(state.tasks.length);
@@ -367,10 +455,34 @@
         }
     }
 
+    function populateExecutionTasks() {
+        const currentValue = elements.executionTaskFilter.value;
+        const options = [...state.tasks]
+            .sort((left, right) => String(left.label || left.task_key).localeCompare(String(right.label || right.task_key)))
+            .map(task => `<option value="${escapeHtml(task.task_key)}">${escapeHtml(task.label || task.task_key)}</option>`)
+            .join("");
+        elements.executionTaskFilter.innerHTML = `<option value="">All tasks</option>${options}`;
+        if (state.tasks.some(task => task.task_key === currentValue)) {
+            elements.executionTaskFilter.value = currentValue;
+        }
+    }
+
+    function populateExecutionNodes() {
+        const currentValue = elements.executionNodeFilter.value;
+        const nodes = [...new Set(state.executions.map(execution => execution.node_id).filter(Boolean))].sort();
+        if (currentValue && !nodes.includes(currentValue)) {
+            nodes.unshift(currentValue);
+        }
+        elements.executionNodeFilter.innerHTML = `<option value="">All nodes</option>${nodes
+            .map(node => `<option value="${escapeHtml(node)}">${escapeHtml(node)}</option>`)
+            .join("")}`;
+        elements.executionNodeFilter.value = currentValue;
+    }
+
     async function handleTaskAction(button) {
         const action = button.dataset.action;
-        const taskId = button.dataset.taskId;
-        const task = state.tasks.find(candidate => candidate.details?.id === taskId);
+        const taskKey = button.dataset.taskKey;
+        const task = state.tasks.find(candidate => candidate.task_key === taskKey);
         if (!task) {
             showToast("Task not found", "Refresh the page and try again.", true);
             return;
@@ -386,7 +498,7 @@
                 return;
             }
             await withButtonBusy(button, async () => {
-                const execution = await request(`/tasks/${encodeURIComponent(taskId)}/execute-async`, {method: "POST"});
+                const execution = await request(`/tasks/${encodeURIComponent(taskKey)}/execute-async`, {method: "POST"});
                 showToast("Execution submitted", `${task.label || "Task"} is queued as ${shortId(execution.execution_id)}.`);
                 await loadExecutions(true);
                 switchView("executions");
@@ -407,7 +519,7 @@
             }
             await withButtonBusy(button, async () => {
                 const updatedTask = await request(
-                    `/tasks/${encodeURIComponent(taskId)}/disable?interrupt=${confirmation.interrupt}`,
+                    `/tasks/${encodeURIComponent(taskKey)}/disable?interrupt=${confirmation.interrupt}`,
                     {method: "POST"}
                 );
                 replaceTask(updatedTask);
@@ -420,7 +532,7 @@
 
         if (action === "enable") {
             await withButtonBusy(button, async () => {
-                const updatedTask = await request(`/tasks/${encodeURIComponent(taskId)}/enable`, {method: "POST"});
+                const updatedTask = await request(`/tasks/${encodeURIComponent(taskKey)}/enable`, {method: "POST"});
                 replaceTask(updatedTask);
                 showToast("Schedule resumed", `${task.label || "Task"} will run automatically again.`);
             });
@@ -428,10 +540,28 @@
     }
 
     async function handleExecutionAction(button) {
-        if (button.dataset.action !== "cancel-execution") {
+        const action = button.dataset.action;
+        const executionId = button.dataset.executionId;
+        if (action === "retry-execution") {
+            const confirmation = await confirmAction({
+                title: `Retry ${shortId(executionId)}?`,
+                message: "This creates a new tracked retry series and may repeat the task's side effects.",
+                confirmLabel: "Retry execution"
+            });
+            if (!confirmation.confirmed) {
+                return;
+            }
+            await withButtonBusy(button, async () => {
+                const retry = await request(`/executions/${encodeURIComponent(executionId)}/retry`, {method: "POST"});
+                showToast("Retry queued", `${shortId(retry.execution_id)} will run under the task's concurrency policy.`);
+                await loadExecutions(true);
+                scheduleExecutionPolling();
+            });
             return;
         }
-        const executionId = button.dataset.executionId;
+        if (action !== "cancel-execution") {
+            return;
+        }
         await withButtonBusy(button, async () => {
             await request(`/executions/${encodeURIComponent(executionId)}`, {method: "DELETE"});
             showToast("Cancellation requested", `${shortId(executionId)} will stop as soon as possible.`);
@@ -441,8 +571,8 @@
     }
 
     function replaceTask(updatedTask) {
-        const taskId = updatedTask.details?.id;
-        state.tasks = state.tasks.map(task => task.details?.id === taskId ? updatedTask : task);
+        const taskKey = updatedTask.task_key;
+        state.tasks = state.tasks.map(task => task.task_key === taskKey ? updatedTask : task);
         renderTasks();
         renderCadenceRail();
         renderMetrics();
@@ -567,6 +697,16 @@
         return intervalSchedule ? "Running or overdue" : "Not available";
     }
 
+    function addFilter(parameters, name, value) {
+        if (value) parameters.set(name, value);
+    }
+
+    function addDateFilter(parameters, name, value) {
+        if (!value) return;
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) parameters.set(name, date.toISOString());
+    }
+
     function formatInterval(value, unit) {
         const labels = {
             NANOSECONDS: "ns", MICROSECONDS: "μs", MILLISECONDS: "ms", SECONDS: "s",
@@ -589,6 +729,23 @@
         if (value < 1_000) return `${value} ms`;
         if (value < 60_000) return `${(value / 1_000).toFixed(value < 10_000 ? 1 : 0)} s`;
         return `${Math.floor(value / 60_000)}m ${Math.floor((value % 60_000) / 1_000)}s`;
+    }
+
+    function formatDrift(milliseconds) {
+        const value = Number(milliseconds);
+        if (!Number.isFinite(value)) return "Unknown";
+        if (Math.abs(value) < 1) return "On time";
+        const prefix = value > 0 ? "+" : "−";
+        return `${prefix}${formatDuration(Math.abs(value))}`;
+    }
+
+    function formatRelativePast(value) {
+        const difference = Date.now() - timestamp(value);
+        if (!Number.isFinite(difference) || timestamp(value) === 0) return "not recorded";
+        if (difference < 60_000) return "just now";
+        if (difference < 3_600_000) return `${Math.max(1, Math.round(difference / 60_000))} min ago`;
+        if (difference < 86_400_000) return `${Math.max(1, Math.round(difference / 3_600_000))} h ago`;
+        return formatDate(value);
     }
 
     function formatDate(value) {
@@ -656,11 +813,18 @@
     function bindEvents() {
         elements.refreshButton.addEventListener("click", () => refreshAll({manual: true}));
         elements.errorRetry.addEventListener("click", () => refreshAll({manual: true}));
+        elements.retryAllFailed.addEventListener("click", handleRetryAllFailed);
         elements.taskFilters.addEventListener("submit", event => event.preventDefault());
         elements.taskSearch.addEventListener("input", renderTasks);
         elements.groupFilter.addEventListener("change", renderTasks);
         elements.stateFilter.addEventListener("change", renderTasks);
-        elements.executionFilter.addEventListener("change", renderExecutions);
+        elements.executionFilters.addEventListener("submit", event => event.preventDefault());
+        elements.executionFilters.addEventListener("change", () => {
+            state.executionPage = 0;
+            loadExecutions().catch(handleLoadError);
+        });
+        elements.executionPrevious.addEventListener("click", () => changeExecutionPage(-1));
+        elements.executionNext.addEventListener("click", () => changeExecutionPage(1));
         elements.confirmDialog.addEventListener("close", finishConfirmation);
 
         elements.viewTabs.addEventListener("click", event => {
@@ -684,6 +848,34 @@
                 schedulePolling();
             }
         });
+    }
+
+    async function handleRetryAllFailed() {
+        const confirmation = await confirmAction({
+            title: "Retry all failed tasks?",
+            message: "The latest eligible failed or timed-out execution for each task will run again.",
+            confirmLabel: "Retry all failed"
+        });
+        if (!confirmation.confirmed) {
+            return;
+        }
+        await withButtonBusy(elements.retryAllFailed, async () => {
+            const response = await request("/executions/retry-all-failed", {method: "POST"});
+            const submitted = Number(response?.submitted || 0);
+            showToast(
+                submitted > 0 ? "Retries queued" : "No eligible failures",
+                submitted > 0
+                    ? `${submitted} task${submitted === 1 ? "" : "s"} queued for retry.`
+                    : "Every latest failure already has a retry or is no longer available."
+            );
+            await loadExecutions(true);
+            scheduleExecutionPolling();
+        });
+    }
+
+    function changeExecutionPage(offset) {
+        state.executionPage = Math.max(0, state.executionPage + offset);
+        loadExecutions().catch(handleLoadError);
     }
 
     async function initialise() {

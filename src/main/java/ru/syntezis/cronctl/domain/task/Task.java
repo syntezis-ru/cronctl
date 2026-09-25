@@ -4,12 +4,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import ru.syntezis.cronctl.annotation.CronctlTask;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
+import ru.syntezis.cronctl.enums.AutomaticTrackingStatus;
+import ru.syntezis.cronctl.enums.ConcurrencyPolicy;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Combines the metadata ({@link ScheduledMethodDetails}) and the execution reference
@@ -58,6 +60,18 @@ public class Task {
     @Builder.Default
     private long timeoutSeconds = CronctlTask.USE_GLOBAL_TIMEOUT;
 
+    /** Process-local policy for overlapping automatic and manual executions. */
+    @Builder.Default
+    private ConcurrencyPolicy concurrencyPolicy = ConcurrencyPolicy.ALLOW;
+
+    /** Positive execution limit used by restrictive concurrency policies. */
+    @Builder.Default
+    private int maxConcurrentExecutions = 1;
+
+    /** Opt-in policy for automatic retries after failed executions. */
+    @Builder.Default
+    private RetryPolicy retryPolicy = RetryPolicy.disabled();
+
     /**
      * Task execution details.
      */
@@ -68,12 +82,20 @@ public class Task {
      */
     private ScheduledMethodReference reference;
 
+    /** Whether Spring scheduled observations can be attributed to this task. */
+    @Builder.Default
+    private AutomaticTrackingStatus automaticTrackingStatus = AutomaticTrackingStatus.ACTIVE;
+
+    /** Diagnostic message when automatic execution tracking is unavailable. */
+    @Nullable
+    private String automaticTrackingMessage;
+
     /**
-     * Returns the task's unique identifier, which is the UUID of its {@link ScheduledMethodDetails}.
+     * Returns the task's stable key.
      *
-     * @return the task's unique identifier
+     * @return the stable task key
      */
-    public UUID getId() {
-        return details.getId();
+    public String getTaskKey() {
+        return details.getTaskKey();
     }
 }

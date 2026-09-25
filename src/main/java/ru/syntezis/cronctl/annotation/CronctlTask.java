@@ -1,6 +1,8 @@
 package ru.syntezis.cronctl.annotation;
 
 import org.springframework.core.annotation.AliasFor;
+import ru.syntezis.cronctl.enums.ConcurrencyPolicy;
+import ru.syntezis.cronctl.enums.RetryBackoff;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -28,6 +30,16 @@ public @interface CronctlTask {
 
     /** Inherit the global {@code cronctl.executor.timeout-seconds} setting. */
     long USE_GLOBAL_TIMEOUT = 0L;
+
+    /**
+     * Stable task identifier exposed as {@code task_key} in the REST API.
+     *
+     * <p>When blank, cronctl derives the key from the application name, Spring bean name,
+     * and scheduled method signature.
+     *
+     * @return the stable task key, or empty string to derive one automatically
+     */
+    String id() default "";
 
     /**
      * Display label shown in the API response. Defaults to the method name when blank.
@@ -90,6 +102,46 @@ public @interface CronctlTask {
      * @return true if toggling is enabled
      */
     boolean togglingEnabled() default false;
+
+    /**
+     * Policy applied when executions of this task overlap.
+     *
+     * <p>The policy is process-local and applies jointly to automatic and manual executions.
+     *
+     * @return the concurrency policy
+     */
+    ConcurrencyPolicy concurrency() default ConcurrencyPolicy.ALLOW;
+
+    /**
+     * Maximum number of executions admitted at the same time.
+     *
+     * <p>The value must be positive. It is exposed but not enforced when
+     * {@link #concurrency()} is {@link ConcurrencyPolicy#ALLOW}.
+     *
+     * @return the positive concurrent execution limit
+     */
+    int maxConcurrentExecutions() default 1;
+
+    /** Number of automatic retries after the original failed execution. */
+    int retries() default 0;
+
+    /** Base ISO-8601 delay used for automatic retries. */
+    String retryDelay() default "PT1S";
+
+    /** Backoff strategy used to calculate subsequent retry delays. */
+    RetryBackoff retryBackoff() default RetryBackoff.FIXED;
+
+    /** Maximum ISO-8601 delay after backoff and jitter are applied. */
+    String maxRetryDelay() default "PT5M";
+
+    /** Symmetric delay jitter from {@code 0.0} to {@code 1.0}. */
+    double retryJitter() default 0.0;
+
+    /** Exception types eligible for retry. An empty list means every {@link Exception}. */
+    Class<? extends Throwable>[] retryOn() default {};
+
+    /** Exception types that must never be retried. These take precedence over {@link #retryOn()}. */
+    Class<? extends Throwable>[] nonRetryableOn() default {};
 
     /**
      * Prevents the annotated {@code @Scheduled} method from being registered in cronctl.

@@ -13,6 +13,7 @@ import ru.syntezis.cronctl.properties.CronctlProperties;
  * <p>Active only when springdoc is on the classpath.
  */
 @RequiredArgsConstructor
+@ConditionalOnClass(name = "org.springdoc.core.models.GroupedOpenApi")
 public class CronctlSwaggerConfiguration {
 
     private final CronctlProperties properties;

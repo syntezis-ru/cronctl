@@ -1,137 +1,235 @@
 package ru.syntezis.cronctl.domain.execution;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import org.jspecify.annotations.Nullable;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
+import ru.syntezis.cronctl.enums.ExecutionSource;
+import ru.syntezis.cronctl.enums.RetryTrigger;
 import ru.syntezis.cronctl.enums.TaskExecutionStatus;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.Future;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Represents the lifecycle of a single async execution of a registered task.
- *
- * <p>State transitions are thread-safe. The intended flow is:
- * {@code PENDING} → {@code RUNNING} → {@code SUCCEEDED | FAILED | CANCELLED | TIMED_OUT}.
- */
-@RequiredArgsConstructor
+/** A single task invocation tracked through the common cronctl execution lifecycle. */
+@Getter
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class TaskExecution {
 
-    @Getter
-    private final UUID executionId = UUID.randomUUID();
+    private final UUID executionId;
+    private final String taskKey;
+    private final ExecutionSource source;
+    private final String nodeId;
+    private final Instant createdAt;
+    @Nullable
+    private final Instant plannedAt;
+    @Nullable
+    private final UUID parentExecutionId;
+    private final UUID rootExecutionId;
+    private final UUID retrySeriesId;
+    private final int attempt;
+    @Nullable
+    private final RetryTrigger retryTrigger;
 
-    @Getter
-    private final UUID taskId;
+    @Getter(AccessLevel.NONE)
+    private final Lock stateLock = new ReentrantLock();
 
-    @Getter
-    private final Instant submittedAt = Instant.now();
-
-    @Getter
-    private volatile TaskExecutionStatus state = TaskExecutionStatus.PENDING;
-
-    @Getter
+    private volatile TaskExecutionStatus status = TaskExecutionStatus.CREATED;
+    @Nullable
+    private volatile Instant queuedAt;
     @Nullable
     private volatile Instant startedAt;
-
-    @Getter
     @Nullable
     private volatile Instant finishedAt;
-
-    @Getter
     @Nullable
-    private volatile TaskExecutionDetails result;
+    private volatile String statusReason;
+    @Nullable
+    private volatile String errorType;
+    @Nullable
+    private volatile String errorMessage;
 
     @Setter
     @Nullable
     private volatile Future<?> future;
 
-    @Getter
     private volatile boolean cancellationRequested;
-
     private volatile boolean cancellationDueToTimeout;
 
-    /**
-     * Transitions from {@code PENDING} to {@code RUNNING}.
-     *
-     * @return {@code false} if the execution was already cancelled before it started
-     */
-    public synchronized boolean start() {
-        if (state != TaskExecutionStatus.PENDING) {
-            return false;
-        }
-
-        state = TaskExecutionStatus.RUNNING;
-        startedAt = Instant.now();
-        return true;
+    public static TaskExecution create(String taskKey, ExecutionSource source, String nodeId,
+                                       @Nullable Instant plannedAt, Instant createdAt) {
+        UUID executionId = UUID.randomUUID();
+        return new TaskExecution(
+                executionId, taskKey, source, nodeId, createdAt, plannedAt,
+                null, executionId, executionId, 1, null
+        );
     }
 
-    /**
-     * Stores the result and transitions to {@code SUCCEEDED} or {@code FAILED}
-     * based on {@link TaskExecutionDetails} status.
-     */
-    public synchronized void complete(TaskExecutionDetails details) {
-        if (state != TaskExecutionStatus.RUNNING) {
-            return;
-        }
-
-        result = details;
-        state = details.getStatus();
-        finishedAt = Instant.now();
+    public static TaskExecution retry(TaskExecution parent, String nodeId, Instant plannedAt,
+                                      Instant createdAt, RetryTrigger retryTrigger) {
+        UUID executionId = UUID.randomUUID();
+        boolean manual = retryTrigger == RetryTrigger.MANUAL;
+        UUID retrySeriesId = manual ? executionId : parent.getRetrySeriesId();
+        int attempt = manual ? 1 : parent.getAttempt() + 1;
+        return new TaskExecution(
+                executionId, parent.getTaskKey(), ExecutionSource.RETRY, nodeId, createdAt, plannedAt,
+                parent.getExecutionId(), parent.getRootExecutionId(), retrySeriesId, attempt, retryTrigger
+        );
     }
 
-    /**
-     * Marks cancellation as requested. If still {@code PENDING}, transitions immediately to
-     * {@code CANCELLED} or {@code TIMED_OUT}. If {@code RUNNING}, the executing thread
-     * must call {@link #markCancelled()} after the method returns.
-     *
-     * @param timedOut {@code true} if the cancellation was triggered by a timeout
-     * @return {@code false} if already in a terminal state
-     */
-    public synchronized boolean requestCancellation(boolean timedOut) {
-        if (isTerminal()) {
-            return false;
+    public boolean queue(Instant transitionAt) {
+        stateLock.lock();
+        try {
+            if (status != TaskExecutionStatus.CREATED) {
+                return false;
+            }
+
+            status = TaskExecutionStatus.QUEUED;
+            queuedAt = transitionAt;
+            return true;
+        } finally {
+            stateLock.unlock();
         }
-
-        cancellationDueToTimeout = timedOut;
-        cancellationRequested = true;
-
-        if (state == TaskExecutionStatus.PENDING) {
-            state = timedOut ? TaskExecutionStatus.TIMED_OUT : TaskExecutionStatus.CANCELLED;
-            finishedAt = Instant.now();
-        }
-
-        return true;
     }
 
-    /**
-     * Transitions a {@code RUNNING} execution to {@code CANCELLED} or {@code TIMED_OUT}.
-     * Called by the executing thread after detecting that cancellation was requested.
-     */
-    public synchronized void markCancelled() {
-        if (state != TaskExecutionStatus.RUNNING) {
-            return;
-        }
+    public boolean start(Instant transitionAt) {
+        stateLock.lock();
+        try {
+            if (status != TaskExecutionStatus.QUEUED) {
+                return false;
+            }
 
-        state = cancellationDueToTimeout ? TaskExecutionStatus.TIMED_OUT : TaskExecutionStatus.CANCELLED;
-        finishedAt = Instant.now();
+            status = TaskExecutionStatus.RUNNING;
+            startedAt = transitionAt;
+            return true;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public void succeed(Instant transitionAt) {
+        finish(TaskExecutionStatus.SUCCEEDED, transitionAt, null, null);
+    }
+
+    public void fail(Instant transitionAt, Throwable throwable) {
+        finish(TaskExecutionStatus.FAILED, transitionAt, throwable.getClass().getName(), throwable.getMessage());
+    }
+
+    public boolean skip(Instant transitionAt, String reason) {
+        stateLock.lock();
+        try {
+            if (status != TaskExecutionStatus.CREATED && status != TaskExecutionStatus.QUEUED) {
+                return false;
+            }
+
+            status = TaskExecutionStatus.SKIPPED;
+            statusReason = reason;
+            finishedAt = transitionAt;
+            return true;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public boolean requestCancellation(Instant transitionAt, boolean timedOut) {
+        return requestCancellation(transitionAt, timedOut,
+                timedOut ? "TIMEOUT" : "CANCELLED_BY_OPERATOR");
+    }
+
+    public boolean requestCancellation(Instant transitionAt, boolean timedOut, String reason) {
+        stateLock.lock();
+        try {
+            if (isTerminalStatus(status)) {
+                return false;
+            }
+
+            cancellationRequested = true;
+            cancellationDueToTimeout = timedOut;
+            statusReason = reason;
+            if (status == TaskExecutionStatus.CREATED || status == TaskExecutionStatus.QUEUED) {
+                status = timedOut ? TaskExecutionStatus.TIMED_OUT : TaskExecutionStatus.CANCELLED;
+                finishedAt = transitionAt;
+            }
+            return true;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    public void finishCancellation(Instant transitionAt) {
+        stateLock.lock();
+        try {
+            if (status != TaskExecutionStatus.RUNNING) {
+                return;
+            }
+
+            status = cancellationDueToTimeout ? TaskExecutionStatus.TIMED_OUT : TaskExecutionStatus.CANCELLED;
+            finishedAt = transitionAt;
+        } finally {
+            stateLock.unlock();
+        }
     }
 
     public boolean isTerminal() {
-        TaskExecutionStatus current = state;
-        return current == TaskExecutionStatus.SUCCEEDED
-                || current == TaskExecutionStatus.FAILED
-                || current == TaskExecutionStatus.CANCELLED
-                || current == TaskExecutionStatus.TIMED_OUT;
+        return isTerminalStatus(status);
     }
 
-    /** Interrupts the underlying thread by cancelling the {@link Future}. */
+    public @Nullable Long getDurationMillis() {
+        Instant executionStartedAt = startedAt;
+        Instant executionFinishedAt = finishedAt;
+        if (executionStartedAt == null || executionFinishedAt == null) {
+            return null;
+        }
+        return Duration.between(executionStartedAt, executionFinishedAt).toMillis();
+    }
+
+    public @Nullable Long getStartDelayMillis() {
+        Instant scheduledAt = plannedAt;
+        Instant executionStartedAt = startedAt;
+        if (scheduledAt == null || executionStartedAt == null) {
+            return null;
+        }
+        return Duration.between(scheduledAt, executionStartedAt).toMillis();
+    }
+
     public void cancelFuture() {
-        Future<?> f = future;
-        if (f != null) {
-            f.cancel(true);
+        Future<?> executionFuture = future;
+        if (executionFuture != null) {
+            executionFuture.cancel(true);
         }
     }
+
+    private void finish(TaskExecutionStatus terminalStatus, Instant transitionAt,
+                        @Nullable String failureType, @Nullable String failureMessage) {
+        stateLock.lock();
+        try {
+            if (status != TaskExecutionStatus.RUNNING) {
+                return;
+            }
+
+            if (cancellationRequested) {
+                status = cancellationDueToTimeout ? TaskExecutionStatus.TIMED_OUT : TaskExecutionStatus.CANCELLED;
+            } else {
+                status = terminalStatus;
+                errorType = failureType;
+                errorMessage = failureMessage;
+            }
+            finishedAt = transitionAt;
+        } finally {
+            stateLock.unlock();
+        }
+    }
+
+    private boolean isTerminalStatus(TaskExecutionStatus candidate) {
+        return candidate == TaskExecutionStatus.SUCCEEDED
+                || candidate == TaskExecutionStatus.FAILED
+                || candidate == TaskExecutionStatus.CANCELLED
+                || candidate == TaskExecutionStatus.TIMED_OUT
+                || candidate == TaskExecutionStatus.SKIPPED;
+    }
+
 }

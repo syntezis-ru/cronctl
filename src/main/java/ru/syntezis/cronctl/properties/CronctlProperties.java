@@ -3,10 +3,12 @@ package ru.syntezis.cronctl.properties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import ru.syntezis.cronctl.enums.ScanType;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +42,9 @@ public class CronctlProperties {
 
     @NestedConfigurationProperty
     private Ui ui = new Ui();
+
+    @NestedConfigurationProperty
+    private History history = new History();
 
     /**
      * Async executor configuration.
@@ -136,6 +141,26 @@ public class CronctlProperties {
 
         /** When {@code false}, the cronctl operator UI is not exposed. */
         private boolean enabled = true;
+
+    }
+
+    /** Execution history configuration. */
+    @Data
+    @NoArgsConstructor
+    public static class History {
+
+        /** Maximum number of terminal records kept by the default in-memory store. */
+        private int maxEntries = 1_000;
+
+        /** Maximum age of terminal records kept by an execution store. */
+        private Duration retention = Duration.ofDays(7);
+
+        /** Interval between background deletion of expired terminal records. */
+        private Duration cleanupInterval = Duration.ofMinutes(10);
+
+        /** Explicit node identifier written to execution records. */
+        @Nullable
+        private String nodeId;
 
     }
 }

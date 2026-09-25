@@ -2,6 +2,7 @@ package ru.syntezis.cronctl.core;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -12,23 +13,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import ru.syntezis.cronctl.core.sync.BlockingTaskExecutor;
+import ru.syntezis.cronctl.core.sync.TaskInvocationResult;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodDetails;
 import ru.syntezis.cronctl.domain.scheduled.ScheduledMethodReference;
 import ru.syntezis.cronctl.domain.task.Task;
-import ru.syntezis.cronctl.domain.task.TaskExecutionDetails;
-import ru.syntezis.cronctl.enums.TaskExecutionStatus;
-import ru.syntezis.cronctl.util.Repeats;
 import ru.syntezis.cronctl.util.ScheduleUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ConcurrentModificationException;
-import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static ru.syntezis.cronctl.util.generator.BeanGenerator.randomString;
@@ -40,103 +41,68 @@ class BlockingTaskExecutorTest {
     private final BlockingTaskExecutor underTest = new BlockingTaskExecutor();
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 2, 3, 10, 100, 999, 9999})
-    @SuppressWarnings("UnnecessaryLocalVariable")
-    void executeTask_TaskProvided_TaskExecutedSuccessfully(int performs) throws NoSuchMethodException {
+    @ValueSource(ints = {0, 1, 2, 3, 10, 100})
+    void invoke_TaskProvided_TaskInvokedSuccessfully(int invocations) throws NoSuchMethodException {
         // Given
-        final int expected = performs;
-
-        UUID id = UUID.randomUUID();
-        Method method = SampleScheduledClass.class.getDeclaredMethod("incrementCounter");
+        final int expected = invocations;
         SampleScheduledClass bean = new SampleScheduledClass();
-
-        Task task = Task.builder()
-                .details(ScheduledMethodDetails.builder()
-                        .id(id)
-                        .methodName(method.getName())
-                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                        .build()
-                )
-                .reference(ScheduledMethodReference.builder()
-                        .beanName("")
-                        .bean(bean)
-                        .method(method)
-                        .build()
-                )
-                .build();
+        Task task = buildTask(bean, "incrementCounter");
 
         // When
-        List<TaskExecutionDetails> executionDetails = Repeats.supplierRepeat(performs, () -> underTest.executeTask(task));
+        IntStream.range(0, invocations)
+                .forEach(ignored -> underTest.invoke(task, UUID.randomUUID()));
         final int actual = bean.getCounter();
 
         // Then
-        verify(underTest, times(performs)).executeTask(task);
-
-        assertThat(expected)
-                .isEqualTo(actual);
-
-        assertThat(executionDetails)
-                .isNotNull()
-                .hasSize(performs)
-                .allSatisfy(ted ->
-                        assertThat(ted)
-                                .hasNoNullFieldsOrPropertiesExcept("failDetails")
-                                .hasFieldOrPropertyWithValue("scheduledMethodId", id)
-                                .hasFieldOrPropertyWithValue("status", TaskExecutionStatus.SUCCEEDED)
-                                .satisfies(ignore ->
-                                        assertThat(ted.getExecutionDurationNanos())
-                                                .isEqualTo(ted.getExecutionEndNanos() - ted.getExecutionStartNanos())
-                                )
-                                .satisfies(ignore -> {
-                                            assertThat(ted.getExecutionStartMills())
-                                                    .isLessThanOrEqualTo(ted.getExecutionEndMills());
-
-                                            assertThat(ted.getExecutionEndMills())
-                                                    .isGreaterThanOrEqualTo(ted.getExecutionStartMills());
-                                        }
-                                )
-                );
+        verify(underTest, times(invocations)).invoke(eq(task), any(UUID.class));
+        assertThat(actual).isEqualTo(expected);
     }
 
     @ParameterizedTest
     @MethodSource("exceptionsSource")
-    void executeTask_TaskProvided_TaskExecutedAndFailed(String exceptionMessage, Class<? extends Exception> exceptionClass) throws NoSuchMethodException {
+    void invoke_ThrowingTask_FailureReturned(String exceptionMessage,
+                                             Class<? extends Exception> exceptionClass) throws NoSuchMethodException {
         // Given
-        UUID id = UUID.randomUUID();
-        Method method = SampleScheduledThrowingClass.class.getDeclaredMethod("throwingJob");
         SampleScheduledThrowingClass bean = new SampleScheduledThrowingClass(exceptionMessage, exceptionClass);
-
-        Task task = Task.builder()
-                .details(ScheduledMethodDetails.builder()
-                        .id(id)
-                        .methodName(method.getName())
-                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
-                        .build()
-                )
-                .reference(ScheduledMethodReference.builder()
-                        .beanName("")
-                        .bean(bean)
-                        .method(method)
-                        .build()
-                )
-                .build();
+        Task task = buildTask(bean, "throwingJob");
 
         // When
-        TaskExecutionDetails executionDetails = underTest.executeTask(task);
-        TaskExecutionDetails.FailDetails failDetails = executionDetails.getFailDetails();
-        String message = failDetails.getMessage();
-        Throwable throwable = failDetails.getThrowable();
+        final TaskInvocationResult actual = underTest.invoke(task, UUID.randomUUID());
 
         // Then
-        verify(underTest).executeTask(task);
-
-        assertThat(executionDetails)
-                .hasNoNullFieldsOrProperties()
-                .hasFieldOrPropertyWithValue("status", TaskExecutionStatus.FAILED);
-
-        assertThat(throwable)
+        assertThat(actual.isSucceeded()).isFalse();
+        assertThat(actual.getFailure())
                 .isExactlyInstanceOf(exceptionClass)
-                .hasMessage(message);
+                .hasMessage(exceptionMessage);
+    }
+
+    @Test
+    void invoke_SuccessfulTask_SuccessReturned() throws NoSuchMethodException {
+        // Given
+        Task task = buildTask(new SampleScheduledClass(), "incrementCounter");
+
+        // When
+        final TaskInvocationResult actual = underTest.invoke(task, UUID.randomUUID());
+
+        // Then
+        assertThat(actual.isSucceeded()).isTrue();
+        assertThat(actual.getFailure()).isNull();
+    }
+
+    private Task buildTask(Object bean, String methodName) throws NoSuchMethodException {
+        Method method = bean.getClass().getDeclaredMethod(methodName);
+        return Task.builder()
+                .details(ScheduledMethodDetails.builder()
+                        .taskKey("test." + methodName)
+                        .methodName(methodName)
+                        .schedule(ScheduleUtils.assembleScheduleDetails(method.getAnnotation(Scheduled.class)))
+                        .build())
+                .reference(ScheduledMethodReference.builder()
+                        .beanName("testBean")
+                        .bean(bean)
+                        .method(method)
+                        .build())
+                .build();
     }
 
     private static Stream<Arguments> exceptionsSource() {
@@ -152,11 +118,11 @@ class BlockingTaskExecutorTest {
     @Getter
     private static class SampleScheduledClass {
 
-        private int counter = 0;
+        private int counter;
 
         @Scheduled(fixedRate = 1000L)
         private void incrementCounter() {
-            counter += 1;
+            counter++;
         }
     }
 
@@ -170,12 +136,11 @@ class BlockingTaskExecutorTest {
         @SuppressWarnings({"OptionalGetWithoutIsPresent", "unchecked"})
         private void throwingJob() throws Exception {
             Constructor<? extends Exception> constructor = Arrays.stream(exception.getDeclaredConstructors())
-                    .filter(c -> c.getParameterCount() == 1)
-                    .filter(c -> c.getParameterTypes()[0] == String.class)
-                    .map(c -> (Constructor<? extends Exception>) c)
+                    .filter(candidate -> candidate.getParameterCount() == 1)
+                    .filter(candidate -> candidate.getParameterTypes()[0] == String.class)
+                    .map(candidate -> (Constructor<? extends Exception>) candidate)
                     .findFirst()
                     .get();
-
             throw constructor.newInstance(message);
         }
     }

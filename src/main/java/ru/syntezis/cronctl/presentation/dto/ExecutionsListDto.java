@@ -10,23 +10,28 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Response DTO for a paginated list of async task executions. */
+/** Paginated execution history response. */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "List of async task executions")
+@Schema(description = "Paginated task execution history")
 public class ExecutionsListDto {
 
     @JsonProperty("executions")
     @Builder.Default
-    @Schema(description = "Executions matching the requested filter")
     private List<ExecutionStatusDto> executions = new ArrayList<>();
 
-    /** Total number of executions in the list. */
     @JsonProperty("total")
-    @Schema(description = "Total number of executions in the response", example = "2")
-    public int getTotal() {
-        return executions.size();
-    }
+    private long total;
+
+    @JsonProperty("page")
+    private int page;
+
+    @JsonProperty("size")
+    private int size;
+
+    @JsonProperty("has_next")
+    private boolean hasNext;
+
 }
