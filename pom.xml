@@ -89,7 +89,7 @@
         <objenesis.version>3.5</objenesis.version>
 
         <!-- Plugin versions -->
-        <lombok.version>1.18.46</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <flatten-maven-plugin.version>1.7.3</flatten-maven-plugin.version>
